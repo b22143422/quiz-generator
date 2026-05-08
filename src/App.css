@@ -59,7 +59,7 @@ body {
   --stage-bg: #0f1115;
   --stage-grid: #1a1d24;
 
-  --paper: #fcfcfa;
+  --paper: #ffffff;
   --ink: #16161a;
   --ink-2: #2c2c30;
   --ink-3: #5a5a60;
@@ -1232,7 +1232,6 @@ textarea {
   width: 210mm;
   height: 297mm;
   background: var(--paper);
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.07 0 0 0 0 0.07 0 0 0 0 0.07 0 0 0 0.025 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   color: var(--ink);
   font-family: var(--font-paper);
   font-size: 9pt;
