@@ -1,2721 +1,2701 @@
-import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import './App.css';
-
-// ═══════════════════════════════════════════════════════
-//  EMBEDDED LOGO (옵티멈 로고 — 투명 배경 PNG)
-// ═══════════════════════════════════════════════════════
-const DEFAULT_LOGO =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAABCCAMAAAAR8f8nAAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAAAP1BMVEX9/f0hFxXkAhKtqqhXUlB4cnCRjYvPtLSDfXpCPDncVGBGQD3gN0zkh4/Dwb6FgX4AAAAAAAAAAAAAAAAAAAB8tu1aAAAAEHRSTlMA//9g4LKKUaP/2/v+kECeZfDj1AAAA89JREFUeNrtm9t6gyAMgLXhINbq+7/tWtutAgln3Cm52TekIfwGCBCHgYXl38ptuGmmUCp6uexyYxRFMl8+ZWYYJXK5MMGa8Xs5CvOoGMBMsHYAP4TX4qoRzB5YDZCXEVRgPIhiD8wWRQLkObAW4MIeWAeQ48BKgFYguDCqfIC8F64FyKcxtQDvCPk8sA7gn46Bd8mpnBVI/3HHEV+9NhJQsvAGDF+17br3x+IIULwxgyu45gEmcRdH7fYoExMEjXIL9wnD168Q/XuZkFCMz+q17zoWk3t7xilAh+9bpKtjF79hW8OEaVW4USPm/tLVf+cDV9uqXb8Z/cIskVivgQQ4kbRDAEUKwOvxX/NkYgi78gG6RjzXsivd70TBe330LMssSRCqBmgAqaLIN1vgga4q7fyiaN6GcYwSHGMim3igL6h1UAowT381vwPBKMDXa2sOEH/cDmBIf934tQnGAY59AIbeVguAwfFUtvyi80FCo+JEgGNngBkuqNJUpTQKJwJcOwOENgP47c1jogueBRA6A1TNHBAbLYGaIYCmIcCtM0BZOAM+tjIgkJfheRtScY/zR+GUPnZIZtchhfMMtwD8lyDBbWsqBSgI/bIQoPWrKxrYCAQgHgGJ+GmMiADUiL8LpK1SgM+5zUT1y5IY0BChod+l99Ee9gIqAALVvltxKt4Lp+mXJXtgCPSTWqI2xJQKgMTZha+2EKDO2QTmToGCGtpAtEiZUgFQBwBCOw/sA1CmAhRhIr088McDtLp6DQCUDJA9sPccqL9pDqwHqNoC1Ps99nLrtgrLHwMQiGCkCuAcy6IA3LOS40CIBtLbWQCxcHirBDjHE3lGLJJW0Z0IJO9Exo4Ahbe7VL6ZNQAv8Uwef6cISsQOPj5vKwWO1emF3KQ8AyBxDlIB0M7Fu51yGkPoXLsAhH4AH43ebIDLKeeBBMA+HjikmF7ugXNSQnLjE+lTPRC/zk44rEgDuKRldIskKhkOiI2sTh44JIyd7gDb3sqdDBDiBvUews3uhSH0SnoBDA3itRagTv2opUlmwhTMtOkGkCYIQy3AIf2bDBO9WbHibRHmR+VhdQFIrIICbzEPoE7/qmpCbDB0dpaMXaOeCBBdBtXQAuAxEoymxEvk2o0gYgL5gYS6VIAr0tw1ety0yoDpVYcJOueTlsPOzM/U9Hr0VdsQR2fPPNNH1uekgvf8K1amX4ml979vjfoloH2FIJ+N+W1F9GtHv9OonudlTv+iYKVSpDGXGDLyqf+9oABZGCAD/I0ADeNgD2QP/G1y/NyHPxRkYfl2+QCamC5YGy4leQAAAABJRU5ErkJggg==';
-
-// ═══════════════════════════════════════════════════════
-//  TYPES
-// ═══════════════════════════════════════════════════════
-type QuestionType = 'multiple-choice' | 'written' | 'ox';
-
-interface OxSentence {
-  id: string;
-  text: string;
-  answer: 'O' | 'X' | '';
-  explanation: string;
+/* ───────────────────────────────────────────────────────
+   RESET — Vite 기본 템플릿 무력화
+─────────────────────────────────────────────────────── */
+:root {
+  color-scheme: dark;
 }
 
-interface Question {
-  id: string;
-  type: QuestionType;
-  questionText: string;       // 발문 (위지윅 HTML)
-  hasPassage: boolean;
-  passage: string;            // 본문 (위지윅 HTML)
-  conditions: string[];       // 영작 조건 (서술형 전용)
-  choices: string[];          // 객관식 선택지 [5]
-  answerLines: number;        // 서술형 답란 줄 수
-  answer: string;             // 정답 (객관식: ① 등 / 서술형: text)
-  oxSentences: OxSentence[];  // OX 문장들
-  groupId?: string;           // 공통 발문 그룹 ID (선택)
+body {
+  display: block !important;
+  place-items: stretch !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
 }
 
-interface CommonGroup {
-  id: string;
-  commonQuestionText: string; // 공통 발문 (위지윅 HTML)
-  hasCommonPassage: boolean;
-  commonPassage: string;      // 공통 본문 (위지윅 HTML)
+#root {
+  max-width: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: left !important;
 }
 
-interface ExamHeader {
-  academyName: string;
-  grade: string;
-  title: string;
-  scope: string;
-  logoDataUrl?: string;
+/* ───────────────────────────────────────────────────────
+   FONTS
+─────────────────────────────────────────────────────── */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+/* ───────────────────────────────────────────────────────
+   TOKENS
+─────────────────────────────────────────────────────── */
+:root {
+  --bg: #16181d;
+  --bg-2: #1c1f26;
+  --surface: #252932;
+  --surface-2: #2d323d;
+  --surface-hover: #353b48;
+  --border: #353a45;
+  --border-strong: #444b58;
+  --text: #f1f3f7;
+  --text-2: #c0c4cc;
+  --text-3: #8b909c;
+  --text-4: #6a6f7a;
+
+  --accent: #f5b942;
+  --accent-hi: #ffc857;
+  --accent-deep: #c89425;
+  --accent-soft: rgba(245, 185, 66, 0.16);
+  --accent-glow: rgba(245, 185, 66, 0.35);
+
+  --info: #6fa8dc;
+  --info-soft: rgba(111, 168, 220, 0.14);
+  --danger: #e57373;
+  --success: #6cae7d;
+  --success-soft: rgba(108, 174, 125, 0.14);
+
+  --ox-color: #b08fd9;
+  --ox-soft: rgba(176, 143, 217, 0.14);
+
+  --stage-bg: #0f1115;
+  --stage-grid: #1a1d24;
+
+  --paper: #ffffff;
+  --ink: #16161a;
+  --ink-2: #2c2c30;
+  --ink-3: #5a5a60;
+  --ink-muted: #8a8a90;
+  --rule: #c4c4c8;
+  --rule-soft: #dedee2;
+
+  --font-ui: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, sans-serif;
+  --font-paper: 'Noto Sans KR', 'Pretendard Variable', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --shadow-paper: 0 1px 0 rgba(0, 0, 0, 0.04),
+    0 25px 60px -25px rgba(0, 0, 0, 0.6),
+    0 8px 18px -10px rgba(0, 0, 0, 0.5);
 }
 
-interface SavedPaper {
-  id: string;
-  name: string;
-  createdAt: number;
-  header: ExamHeader;
-  questions: Question[];
-  groups: CommonGroup[];
+* {
+  box-sizing: border-box;
 }
 
-// ═══════════════════════════════════════════════════════
-//  A4 SIZING
-// ═══════════════════════════════════════════════════════
-const MM_TO_PX = 96 / 25.4;
-const PAPER_W_MM = 210;
-const PAPER_H_MM = 297;
-const PAPER_W_PX = PAPER_W_MM * MM_TO_PX;
-const PAPER_H_PX = PAPER_H_MM * MM_TO_PX;
-
-const PAD_X_MM = 12;
-const PAD_TOP_MM = 11;
-const PAD_BOTTOM_MM = 11;
-const COL_GAP_MM = 10;
-const COL_W_MM = (PAPER_W_MM - PAD_X_MM * 2 - COL_GAP_MM) / 2;
-const COL_W_PX = COL_W_MM * MM_TO_PX;
-const COL_FULL_H_PX = (PAPER_H_MM - PAD_TOP_MM - PAD_BOTTOM_MM) * MM_TO_PX;
-
-const BLOCK_GAP_PX = 1.5 * MM_TO_PX;
-const GROUP_GAP_PX = 6 * MM_TO_PX;
-
-const FOOTER_PX = 8 * MM_TO_PX;
-const SAFETY_MARGIN_PX = 4 * MM_TO_PX;
-
-const MC_PER_ROW = 10;
-
-// ═══════════════════════════════════════════════════════
-//  LIBRARY (localStorage)
-// ═══════════════════════════════════════════════════════
-const LIBRARY_KEY = 'exam-studio.library.v2';
-
-function normalizeQuestion(q: any): Question {
-  const type: QuestionType =
-    q?.type === 'written' || q?.type === 'ox' ? q.type : 'multiple-choice';
-  return {
-    id: q?.id ?? `q${Date.now()}_${Math.random().toString(36).slice(2)}`,
-    type,
-    questionText: q?.questionText ?? '',
-    hasPassage: !!q?.hasPassage,
-    passage: q?.passage ?? '',
-    conditions: Array.isArray(q?.conditions) ? q.conditions : [],
-    choices:
-      Array.isArray(q?.choices) && q.choices.length === 5
-        ? q.choices
-        : ['', '', '', '', ''],
-    answerLines: typeof q?.answerLines === 'number' ? q.answerLines : 3,
-    answer: q?.answer ?? '',
-    oxSentences: Array.isArray(q?.oxSentences)
-      ? q.oxSentences.map((s: any) => ({
-          id: s?.id ?? `s${Date.now()}_${Math.random().toString(36).slice(2)}`,
-          text: s?.text ?? '',
-          answer: s?.answer === 'O' || s?.answer === 'X' ? s.answer : '',
-          explanation: s?.explanation ?? '',
-        }))
-      : [],
-    groupId: q?.groupId,
-  };
+html,
+body,
+#root {
+  height: 100%;
 }
 
-function normalizeGroup(g: any): CommonGroup {
-  return {
-    id: g?.id ?? `g${Date.now()}_${Math.random().toString(36).slice(2)}`,
-    commonQuestionText: g?.commonQuestionText ?? '',
-    hasCommonPassage: !!g?.hasCommonPassage,
-    commonPassage: g?.commonPassage ?? '',
-  };
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'ss01';
+  letter-spacing: -0.005em;
+  overflow: hidden;
 }
 
-function loadLibrary(): SavedPaper[] {
-  try {
-    const raw = localStorage.getItem(LIBRARY_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter((p) => p && p.id && p.header)
-      .map((p) => ({
-        id: p.id,
-        name: p.name ?? '제목 없음',
-        createdAt: p.createdAt ?? Date.now(),
-        header: p.header,
-        questions: Array.isArray(p.questions)
-          ? p.questions.map(normalizeQuestion)
-          : [],
-        groups: Array.isArray(p.groups) ? p.groups.map(normalizeGroup) : [],
-      }));
-  } catch {
-    return [];
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input,
+textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+textarea {
+  resize: vertical;
+}
+
+/* ───────────────────────────────────────────────────────
+   APP SHELL
+─────────────────────────────────────────────────────── */
+.app-shell {
+  display: grid;
+  grid-template-columns: 460px 1fr;
+  height: 100vh;
+  width: 100vw;
+  background: var(--bg);
+}
+
+/* ───────────────────────────────────────────────────────
+   CONTROL PANEL
+─────────────────────────────────────────────────────── */
+.control-panel {
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  border-right: 1px solid var(--border);
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.control-panel::-webkit-scrollbar {
+  width: 10px;
+}
+.control-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.control-panel::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 5px;
+  border: 2px solid var(--bg);
+}
+.control-panel::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+.cp-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 22px 26px 20px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+}
+
+.cp-brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+  color: #1a1207;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  border-radius: 10px;
+  box-shadow: 0 6px 16px -4px var(--accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.cp-brand-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cp-brand-title {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.cp-brand-sub {
+  font-size: 11.5px;
+  color: var(--text-3);
+  letter-spacing: 0.01em;
+}
+
+.cp-brand-action {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-2);
+  background: var(--surface);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.cp-brand-action:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.cp-section {
+  padding: 22px 26px 26px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cp-section:last-child {
+  border-bottom: none;
+  padding-bottom: 80px;
+}
+
+.cp-section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  width: 100%;
+}
+
+.cp-section-head-toggle {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 14px;
+  text-align: left;
+  transition: opacity 0.15s ease;
+}
+
+.cp-section-head-toggle:hover {
+  opacity: 0.85;
+}
+
+.cp-section-head-toggle:hover .cp-chevron {
+  color: var(--accent);
+}
+
+.cp-section-num {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  background: var(--accent-soft);
+  padding: 4px 8px;
+  border-radius: 5px;
+  border: 1px solid rgba(245, 185, 66, 0.25);
+  flex-shrink: 0;
+}
+
+.cp-section-head h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  flex: 1;
+  margin: 0;
+  text-align: left;
+}
+
+.cp-list-total {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  margin-left: auto;
+  letter-spacing: 0.04em;
+}
+
+.cp-chevron {
+  color: var(--text-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.cp-chevron.open {
+  transform: rotate(180deg);
+}
+
+.cp-mini-btn {
+  font-size: 11px;
+  color: var(--text-2);
+  padding: 5px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  transition: all 0.15s ease;
+  background: var(--surface);
+}
+.cp-mini-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.cp-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  margin-bottom: 14px;
+}
+
+.cp-logo-preview {
+  width: 80px;
+  height: 56px;
+  border-radius: 8px;
+  background: white;
+  border: 1px solid var(--border-strong);
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  font-family: var(--font-paper);
+  font-weight: 700;
+  font-size: 22px;
+  overflow: hidden;
+  flex-shrink: 0;
+  padding: 4px;
+}
+
+.cp-logo-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.cp-logo-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.cp-file-btn {
+  display: inline-block;
+  padding: 8px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.cp-file-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.cp-link-btn {
+  font-size: 11px;
+  color: var(--text-3);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  align-self: flex-start;
+}
+
+.cp-link-btn:hover {
+  color: var(--accent);
+}
+
+.cp-field {
+  margin-bottom: 14px;
+}
+
+.cp-field label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-bottom: 7px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cp-input,
+.cp-textarea {
+  width: 100%;
+  padding: 11px 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 13px;
+  color: var(--text);
+  transition: border 0.15s ease, background 0.15s ease,
+    box-shadow 0.15s ease;
+  outline: none;
+}
+
+.cp-input::placeholder,
+.cp-textarea::placeholder {
+  color: var(--text-4);
+}
+
+.cp-input:hover,
+.cp-textarea:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.cp-input:focus,
+.cp-textarea:focus {
+  border-color: var(--accent);
+  background: var(--surface-2);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.cp-textarea {
+  line-height: 1.55;
+  font-size: 13px;
+  min-height: 84px;
+}
+
+.cp-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.cp-field-emphasis {
+  background: linear-gradient(
+    180deg,
+    var(--accent-soft) 0%,
+    transparent 100%
+  );
+  padding: 12px;
+  margin: 0 -12px 14px;
+  border-radius: var(--r-md);
+  position: relative;
+}
+
+.cp-field-emphasis label {
+  color: var(--accent);
+  font-size: 11.5px;
+}
+
+.cp-field-pin {
+  width: 4px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: 1px;
+  display: inline-block;
+}
+
+.cp-input-emphasis {
+  font-size: 14.5px;
+  font-weight: 600;
+  padding: 13px 15px;
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+  letter-spacing: -0.01em;
+}
+
+.cp-input-emphasis:focus {
+  border-color: var(--accent);
+}
+
+/* ─── 유형 토글 (3개 옵션) ─── */
+.cp-type-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  margin-bottom: 16px;
+}
+
+.cp-type-toggle-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.cp-type-opt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 6px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-2);
+  transition: all 0.18s ease;
+}
+
+.cp-type-opt:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.cp-type-opt.active {
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
+  color: #1a1207;
+  font-weight: 700;
+  box-shadow: 0 4px 12px -4px var(--accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.cp-type-mark {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cp-type-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  margin-left: 2px;
+}
+
+.cp-type-opt.active .cp-type-count {
+  background: rgba(26, 18, 7, 0.2);
+  color: #1a1207;
+}
+
+/* ─── 위지윅 에디터 (RTE) ─── */
+.rte-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  overflow: hidden;
+  transition: border 0.15s ease, background 0.15s ease;
+}
+
+.rte-wrap:focus-within {
+  border-color: var(--accent);
+  background: var(--surface-2);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.rte-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.rte-btn {
+  width: 28px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.rte-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.rte-btn:active {
+  transform: scale(0.96);
+}
+
+.rte-btn-bold {
+  font-family: var(--font-ui);
+  font-weight: 900;
+}
+
+.rte-btn-underline {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.rte-toolbar-hint {
+  margin-left: 6px;
+  font-size: 10.5px;
+  color: var(--text-4);
+  letter-spacing: 0.02em;
+}
+
+.rte-editor {
+  padding: 10px 13px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+  outline: none;
+  word-break: keep-all;
+  white-space: pre-wrap;
+  background: transparent;
+}
+
+.rte-editor[data-empty='true']::before {
+  content: attr(data-placeholder);
+  color: var(--text-4);
+  pointer-events: none;
+}
+
+.rte-editor strong {
+  font-weight: 800;
+  color: var(--text);
+}
+
+.rte-editor u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ─── 본문/조건 박스 컨테이너 ─── */
+.cp-passage-block,
+.cp-conditions-block {
+  margin-bottom: 14px;
+}
+
+.cp-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  transition: all 0.15s ease;
+  user-select: none;
+  position: relative;
+}
+
+.cp-checkbox-label:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.cp-checkbox-label:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.cp-checkbox-label input[type='checkbox'] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cp-checkbox-box {
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 5px;
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  color: transparent;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.cp-checkbox-label:has(input:checked) .cp-checkbox-box {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a1207;
+}
+
+.cp-checkbox-text {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  letter-spacing: -0.005em;
+}
+
+.cp-checkbox-text em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-3);
+  letter-spacing: 0;
+}
+
+.cp-passage-input {
+  margin-top: 10px;
+}
+
+/* ─── 조건 항목별 입력 ─── */
+.cp-conditions-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cp-condition-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cp-condition-num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  width: 22px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.cp-condition-row .cp-input {
+  flex: 1;
+}
+
+.cp-condition-del {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.cp-condition-del:hover {
+  color: var(--danger);
+  background: rgba(229, 115, 115, 0.1);
+}
+
+.cp-condition-add {
+  margin-top: 4px;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  background: var(--surface-2);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  transition: all 0.15s ease;
+}
+
+.cp-condition-add:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  border-style: solid;
+}
+
+/* ─── OX 문장 입력 ─── */
+.cp-ox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-ox-empty {
+  font-size: 12px;
+  color: var(--text-4);
+  text-align: center;
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-sm);
+}
+
+.cp-ox-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 10px;
+}
+
+.cp-ox-row-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.cp-ox-num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ox-color);
+  padding-top: 8px;
+  flex-shrink: 0;
+}
+
+.cp-ox-text {
+  flex: 1;
+  min-height: 50px;
+  font-size: 12.5px;
+  background: var(--bg);
+}
+
+.cp-hint {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.5;
+  padding: 7px 10px;
+  background: var(--info-soft);
+  border-radius: 5px;
+}
+
+.cp-hint strong {
+  font-weight: 700;
+  color: var(--info);
+}
+
+.cp-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cp-choice-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cp-choice-mark {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.cp-choice-row .cp-input {
+  flex: 1;
+}
+
+.cp-stepper {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 5px;
+  gap: 4px;
+}
+
+.cp-stepper button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  transition: background 0.15s ease;
+  background: var(--surface-2);
+}
+
+.cp-stepper button:hover {
+  background: var(--accent);
+  color: #1a1207;
+}
+
+.cp-stepper span {
+  min-width: 56px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cp-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.cp-btn-primary {
+  flex: 1;
+  padding: 14px 18px;
+  background: linear-gradient(180deg, var(--accent-hi) 0%, var(--accent) 100%);
+  color: #1a1207;
+  font-weight: 700;
+  font-size: 13.5px;
+  border-radius: var(--r-md);
+  letter-spacing: -0.005em;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 6px 16px -4px var(--accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.cp-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px -6px var(--accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.cp-btn-primary:active {
+  transform: translateY(0);
+}
+
+.cp-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.cp-btn-ghost {
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-2);
+  border-radius: var(--r-md);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.cp-btn-ghost:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.cp-btn-ghost.danger:hover {
+  background: rgba(229, 115, 115, 0.1);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.cp-empty {
+  font-size: 12.5px;
+  color: var(--text-3);
+  text-align: center;
+  padding: 26px 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  line-height: 1.6;
+}
+
+.cp-empty small {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-4);
+}
+
+/* ─── 그룹화 모드 바 ─── */
+.cp-grouping-bar {
+  margin-bottom: 12px;
+}
+
+.cp-grouping-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  transition: all 0.15s ease;
+}
+
+.cp-grouping-btn:hover {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.cp-grouping-active {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-md);
+}
+
+.cp-grouping-count {
+  flex: 1;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.cp-grouping-apply {
+  padding: 6px 12px;
+  background: var(--accent);
+  color: #1a1207;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 5px;
+  transition: all 0.15s ease;
+}
+
+.cp-grouping-apply:hover {
+  background: var(--accent-hi);
+}
+
+.cp-grouping-cancel {
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 500;
+  border-radius: 5px;
+  transition: all 0.15s ease;
+}
+
+.cp-grouping-cancel:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+/* ─── 문제 목록 ─── */
+.cp-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 0;
+  margin: 0;
+}
+
+.cp-list-item {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  padding: 10px 10px 10px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  transition: all 0.15s ease;
+}
+
+.cp-list-item:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+
+.cp-list-item.editing {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.cp-list-item.selected {
+  border-color: var(--accent);
+  background: rgba(245, 185, 66, 0.08);
+}
+
+.cp-list-select {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.cp-list-select input[type='checkbox'] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cp-list-select .cp-checkbox-box {
+  width: 18px;
+  height: 18px;
+}
+
+.cp-list-select:has(input:checked) .cp-checkbox-box {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a1207;
+}
+
+.cp-list-select:has(input:disabled) {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.cp-tag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  flex-shrink: 0;
+  background: var(--bg);
+  border-radius: 7px;
+  padding: 4px 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.cp-tag em {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.cp-tag.tag-mc {
+  color: var(--accent);
+  border: 1px solid rgba(245, 185, 66, 0.35);
+  background: rgba(245, 185, 66, 0.08);
+}
+
+.cp-tag.tag-wr {
+  color: #d49b91;
+  border: 1px solid rgba(212, 155, 145, 0.35);
+  background: rgba(212, 155, 145, 0.08);
+}
+
+.cp-tag.tag-ox {
+  color: var(--ox-color);
+  border: 1px solid rgba(176, 143, 217, 0.35);
+  background: var(--ox-soft);
+  font-size: 9px;
+}
+
+.cp-tag.tag-ox em {
+  font-size: 13px;
+  margin-top: 1px;
+}
+
+.cp-list-text {
+  flex: 1;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+  cursor: pointer;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: keep-all;
+}
+
+.cp-list-text i {
+  color: var(--text-3);
+  font-style: italic;
+}
+
+.cp-list-text strong {
+  font-weight: 800;
+}
+
+.cp-list-text u {
+  text-decoration: underline;
+}
+
+.cp-list-badge {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1.5px 5px;
+  margin-right: 5px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 3px;
+  vertical-align: 1px;
+}
+
+.cp-list-badge.cond {
+  background: rgba(212, 155, 145, 0.15);
+  color: #d49b91;
+}
+
+.cp-list-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cp-list-tools button {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border-radius: 4px;
+  color: var(--text-3);
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+
+.cp-list-tools button:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.cp-list-tools button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.cp-list-tools button.danger:hover {
+  color: var(--danger);
+  background: rgba(229, 115, 115, 0.1);
+}
+
+/* ─── 공통 발문 그룹 (문제 목록 내) ─── */
+.cp-list-group {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-md);
+  padding: 10px;
+  list-style: none;
+}
+
+.cp-list-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.cp-list-group-tag {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  background: var(--accent-soft);
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.cp-list-group-preview {
+  flex: 1;
+  font-size: 11.5px;
+  color: var(--text-2);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.cp-list-group-preview i {
+  color: var(--text-4);
+  font-style: italic;
+}
+
+.cp-list-group-edit {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+  border-radius: 5px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.cp-list-group-edit:hover {
+  background: var(--surface-hover);
+  color: var(--accent);
+}
+
+.cp-list-group-items {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 0;
+  margin: 0;
+}
+
+/* ─── 답지 작성 ─── */
+.cp-answer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-answer-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.cp-answer-row:hover {
+  border-color: var(--border-strong);
+}
+
+.cp-answer-mc {
+  display: flex;
+  gap: 5px;
+  flex: 1;
+  align-self: center;
+}
+
+.cp-answer-mc-btn {
+  flex: 1;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.cp-answer-mc-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.cp-answer-mc-btn.active {
+  background: var(--accent);
+  color: #1a1207;
+  border-color: var(--accent);
+  font-weight: 700;
+  box-shadow: 0 2px 8px -2px var(--accent-glow);
+}
+
+.cp-answer-text {
+  flex: 1;
+  min-height: 56px;
+  font-size: 12.5px;
+  background: var(--bg);
+  border-color: var(--border);
+}
+
+/* OX 답지 행 */
+.cp-answer-row-ox {
+  flex-direction: row;
+}
+
+.cp-ox-answer-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cp-ox-answer-row {
+  display: grid;
+  grid-template-columns: 30px auto 1fr;
+  align-items: center;
+  gap: 6px;
+}
+
+.cp-ox-answer-num {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ox-color);
+  text-align: center;
+}
+
+.cp-ox-answer-toggle {
+  display: inline-flex;
+  gap: 3px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px;
+}
+
+.cp-ox-toggle-btn {
+  width: 28px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.cp-ox-toggle-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.cp-ox-toggle-btn.active-o {
+  background: var(--success);
+  color: white;
+}
+
+.cp-ox-toggle-btn.active-x {
+  background: var(--danger);
+  color: white;
+}
+
+.cp-ox-explanation {
+  font-size: 11.5px;
+  padding: 7px 10px;
+  background: var(--bg);
+}
+
+/* ─── 모달 ─── */
+.cp-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  animation: modal-fade-in 0.15s ease;
+}
+
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
-function persistLibrary(papers: SavedPaper[]) {
-  try {
-    localStorage.setItem(LIBRARY_KEY, JSON.stringify(papers));
-  } catch (e) {
-    console.error('Failed to persist library:', e);
+.cp-modal {
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  width: 100%;
+  max-width: 520px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  animation: modal-slide-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modal-slide-in {
+  from {
+    transform: translateY(8px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
   }
 }
 
-function formatRelDate(ts: number): string {
-  const d = new Date(ts);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mi = String(d.getMinutes()).padStart(2, '0');
-  return `${yyyy}.${mm}.${dd} ${hh}:${mi}`;
+.cp-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
 }
 
-// ═══════════════════════════════════════════════════════
-//  HTML SANITIZER (위지윅 출력값 정화 — strong/u만 허용)
-// ═══════════════════════════════════════════════════════
-function sanitizeRichHtml(html: string): string {
-  if (!html) return '';
-  // 1) <br> 보존을 위해 임시 마커로 치환
-  const withBr = html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>\s*<p[^>]*>/gi, '\n')
-    .replace(/<\/?p[^>]*>/gi, '');
-
-  // 2) 허용 태그만 남기기 (strong/b → strong, u → u)
-  const allowed = withBr
-    .replace(/<\s*b(\s[^>]*)?>/gi, '<strong>')
-    .replace(/<\s*\/\s*b\s*>/gi, '</strong>')
-    .replace(/<(?!\s*\/?\s*(strong|u)\b)[^>]*>/gi, '');
-
-  return allowed;
+.cp-modal-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
 }
 
-function isPlainTextEmpty(html: string): boolean {
-  const stripped = html
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .trim();
-  return stripped.length === 0;
+.cp-modal-close {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  color: var(--text-3);
+  border-radius: 6px;
+  transition: all 0.15s ease;
 }
 
-// ═══════════════════════════════════════════════════════
-//  INITIAL
-// ═══════════════════════════════════════════════════════
-const initialHeader: ExamHeader = {
-  academyName: '옵티멈N스터디 영어학원',
-  grade: '',
-  title: '',
-  scope: '',
-  logoDataUrl: DEFAULT_LOGO,
-};
-
-// ═══════════════════════════════════════════════════════
-//  ROOT
-// ═══════════════════════════════════════════════════════
-export default function App() {
-  const [header, setHeader] = useState<ExamHeader>(initialHeader);
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [groups, setGroups] = useState<CommonGroup[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [library, setLibrary] = useState<SavedPaper[]>(() => loadLibrary());
-
-  const updateHeader = (patch: Partial<ExamHeader>) =>
-    setHeader((prev) => ({ ...prev, ...patch }));
-
-  const addQuestion = (q: Omit<Question, 'id'>) =>
-    setQuestions((prev) => [
-      ...prev,
-      { ...q, id: `q${Date.now()}_${Math.random().toString(36).slice(2)}` },
-    ]);
-
-  const updateQuestion = (id: string, patch: Partial<Question>) =>
-    setQuestions((prev) =>
-      prev.map((q) => (q.id === id ? { ...q, ...patch } : q))
-    );
-
-  const deleteQuestion = (id: string) => {
-    setQuestions((prev) => prev.filter((q) => q.id !== id));
-    if (editingId === id) setEditingId(null);
-  };
-
-  const moveQuestion = (id: string, dir: -1 | 1) => {
-    setQuestions((prev) => {
-      const idx = prev.findIndex((q) => q.id === id);
-      if (idx < 0) return prev;
-      const newIdx = idx + dir;
-      if (newIdx < 0 || newIdx >= prev.length) return prev;
-      const next = [...prev];
-      [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
-      return next;
-    });
-  };
-
-  // ─── 공통 발문 그룹 관리 ───
-  const createGroup = (
-    questionIds: string[],
-    commonQuestionText: string,
-    hasCommonPassage: boolean,
-    commonPassage: string
-  ) => {
-    const groupId = `g${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const newGroup: CommonGroup = {
-      id: groupId,
-      commonQuestionText,
-      hasCommonPassage,
-      commonPassage,
-    };
-    setGroups((prev) => [...prev, newGroup]);
-    setQuestions((prev) =>
-      prev.map((q) => (questionIds.includes(q.id) ? { ...q, groupId } : q))
-    );
-  };
-
-  const updateGroup = (id: string, patch: Partial<CommonGroup>) =>
-    setGroups((prev) =>
-      prev.map((g) => (g.id === id ? { ...g, ...patch } : g))
-    );
-
-  const ungroupQuestions = (groupId: string) => {
-    setQuestions((prev) =>
-      prev.map((q) =>
-        q.groupId === groupId ? { ...q, groupId: undefined } : q
-      )
-    );
-    setGroups((prev) => prev.filter((g) => g.id !== groupId));
-  };
-
-  // ─── 라이브러리 ───
-  const savePaper = () => {
-    const defaultName =
-      header.title?.trim() ||
-      `시험지 ${new Date().toLocaleDateString('ko-KR')}`;
-    const name = prompt('이 시험지를 어떤 이름으로 저장할까요?', defaultName);
-    if (!name?.trim()) return;
-
-    const newPaper: SavedPaper = {
-      id: `paper_${Date.now()}`,
-      name: name.trim(),
-      createdAt: Date.now(),
-      header: { ...header },
-      questions: questions.map((q) => ({ ...q })),
-      groups: groups.map((g) => ({ ...g })),
-    };
-    const next = [newPaper, ...library];
-    setLibrary(next);
-    persistLibrary(next);
-  };
-
-  const loadPaper = (id: string) => {
-    const paper = library.find((p) => p.id === id);
-    if (!paper) return;
-    if (questions.length > 0) {
-      const ok = confirm(
-        '현재 작업 중인 시험지가 사라지고 저장된 시험지로 대체됩니다. 계속할까요?\n\n(저장하지 않은 변경사항은 사라집니다)'
-      );
-      if (!ok) return;
-    }
-    setHeader(paper.header);
-    setQuestions(paper.questions.map(normalizeQuestion));
-    setGroups(paper.groups.map(normalizeGroup));
-    setEditingId(null);
-  };
-
-  const deletePaper = (id: string) => {
-    const paper = library.find((p) => p.id === id);
-    if (!paper) return;
-    if (!confirm(`"${paper.name}" 시험지를 라이브러리에서 삭제할까요?`))
-      return;
-    const next = library.filter((p) => p.id !== id);
-    setLibrary(next);
-    persistLibrary(next);
-  };
-
-  const newBlankPaper = () => {
-    if (questions.length > 0) {
-      const ok = confirm(
-        '현재 작업 중인 시험지가 사라집니다. 새 시험지로 시작할까요?'
-      );
-      if (!ok) return;
-    }
-    setHeader({ ...initialHeader });
-    setQuestions([]);
-    setGroups([]);
-    setEditingId(null);
-  };
-
-  return (
-    <div className="app-shell">
-      <ControlPanel
-        header={header}
-        onHeaderChange={updateHeader}
-        questions={questions}
-        groups={groups}
-        editingId={editingId}
-        onSelectEdit={setEditingId}
-        onAdd={addQuestion}
-        onUpdate={updateQuestion}
-        onDelete={deleteQuestion}
-        onMove={moveQuestion}
-        onCreateGroup={createGroup}
-        onUpdateGroup={updateGroup}
-        onUngroup={ungroupQuestions}
-        library={library}
-        onSavePaper={savePaper}
-        onLoadPaper={loadPaper}
-        onDeletePaper={deletePaper}
-        onNewBlank={newBlankPaper}
-      />
-      <ExamPaper header={header} questions={questions} groups={groups} />
-    </div>
-  );
+.cp-modal-close:hover {
+  background: var(--surface-hover);
+  color: var(--text);
 }
 
-// ═══════════════════════════════════════════════════════
-//  RICH TEXT EDITOR (위지윅 - 볼드 + 밑줄)
-// ═══════════════════════════════════════════════════════
-interface RichTextEditorProps {
-  value: string;
-  onChange: (html: string) => void;
-  placeholder?: string;
-  minHeight?: number;
+.cp-modal-body {
+  padding: 18px 20px;
+  overflow-y: auto;
+  flex: 1;
 }
 
-function RichTextEditor({
-  value,
-  onChange,
-  placeholder,
-  minHeight = 84,
-}: RichTextEditorProps) {
-  const editorRef = useRef<HTMLDivElement>(null);
-  const lastHtmlRef = useRef<string>(value);
-  const [, force] = useState(0);
-
-  // 외부에서 value 바뀌면(다른 문제 선택 등) 에디터에 반영
-  useEffect(() => {
-    if (editorRef.current && editorRef.current.innerHTML !== value) {
-      editorRef.current.innerHTML = value || '';
-      lastHtmlRef.current = value;
-    }
-  }, [value]);
-
-  const handleInput = () => {
-    if (!editorRef.current) return;
-    const html = sanitizeRichHtml(editorRef.current.innerHTML);
-    lastHtmlRef.current = html;
-    onChange(html);
-    force((n) => n + 1);
-  };
-
-  const exec = (cmd: 'bold' | 'underline') => {
-    editorRef.current?.focus();
-    document.execCommand(cmd, false);
-    handleInput();
-  };
-
-  const isEmpty = isPlainTextEmpty(value || '');
-
-  return (
-    <div className="rte-wrap">
-      <div className="rte-toolbar">
-        <button
-          type="button"
-          className="rte-btn rte-btn-bold"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            exec('bold');
-          }}
-          title="굵게 (Ctrl+B)"
-        >
-          B
-        </button>
-        <button
-          type="button"
-          className="rte-btn rte-btn-underline"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            exec('underline');
-          }}
-          title="밑줄 (Ctrl+U)"
-        >
-          U
-        </button>
-        <span className="rte-toolbar-hint">
-          드래그 선택 후 버튼 클릭
-        </span>
-      </div>
-      <div
-        ref={editorRef}
-        className="rte-editor"
-        contentEditable
-        suppressContentEditableWarning
-        onInput={handleInput}
-        onBlur={handleInput}
-        style={{ minHeight }}
-        data-placeholder={placeholder}
-        data-empty={isEmpty ? 'true' : 'false'}
-      />
-    </div>
-  );
+.cp-modal-info {
+  font-size: 12.5px;
+  color: var(--text-2);
+  line-height: 1.55;
+  margin: 0 0 16px 0;
+  padding: 10px 12px;
+  background: var(--info-soft);
+  border-radius: 6px;
+  border-left: 3px solid var(--info);
 }
 
-// ═══════════════════════════════════════════════════════
-//  CONTROL PANEL
-// ═══════════════════════════════════════════════════════
-interface ControlPanelProps {
-  header: ExamHeader;
-  onHeaderChange: (patch: Partial<ExamHeader>) => void;
-  questions: Question[];
-  groups: CommonGroup[];
-  editingId: string | null;
-  onSelectEdit: (id: string | null) => void;
-  onAdd: (q: Omit<Question, 'id'>) => void;
-  onUpdate: (id: string, patch: Partial<Question>) => void;
-  onDelete: (id: string) => void;
-  onMove: (id: string, dir: -1 | 1) => void;
-  onCreateGroup: (
-    ids: string[],
-    commonQT: string,
-    hasPassage: boolean,
-    passage: string
-  ) => void;
-  onUpdateGroup: (id: string, patch: Partial<CommonGroup>) => void;
-  onUngroup: (groupId: string) => void;
-  library: SavedPaper[];
-  onSavePaper: () => void;
-  onLoadPaper: (id: string) => void;
-  onDeletePaper: (id: string) => void;
-  onNewBlank: () => void;
+.cp-modal-info strong {
+  color: var(--info);
+  font-weight: 700;
 }
 
-interface ComposerState {
-  type: QuestionType;
-  questionText: string;
-  hasPassage: boolean;
-  passage: string;
-  conditions: string[];
-  choices: string[];
-  answerLines: number;
-  answer: string;
-  oxSentences: OxSentence[];
+.cp-modal-foot {
+  display: flex;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
 }
 
-const blankComposer: ComposerState = {
-  type: 'multiple-choice',
-  questionText: '',
-  hasPassage: false,
-  passage: '',
-  conditions: [],
-  choices: ['', '', '', '', ''],
-  answerLines: 3,
-  answer: '',
-  oxSentences: [],
-};
-
-function ControlPanel({
-  header,
-  onHeaderChange,
-  questions,
-  groups,
-  editingId,
-  onSelectEdit,
-  onAdd,
-  onUpdate,
-  onDelete,
-  onMove,
-  onCreateGroup,
-  onUpdateGroup,
-  onUngroup,
-  library,
-  onSavePaper,
-  onLoadPaper,
-  onDeletePaper,
-  onNewBlank,
-}: ControlPanelProps) {
-  const [composer, setComposer] = useState<ComposerState>(blankComposer);
-  const [listExpanded, setListExpanded] = useState(false);
-  const [answersExpanded, setAnswersExpanded] = useState(false);
-  const [libraryExpanded, setLibraryExpanded] = useState(false);
-
-  // 그룹화 모드: 문제 목록에서 multi-select 후 묶기
-  const [groupingMode, setGroupingMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [groupModal, setGroupModal] = useState<{
-    questionIds: string[];
-  } | null>(null);
-  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (editingId) {
-      const q = questions.find((qq) => qq.id === editingId);
-      if (q) {
-        setComposer({
-          type: q.type,
-          questionText: q.questionText,
-          hasPassage: q.hasPassage,
-          passage: q.passage,
-          conditions: [...q.conditions],
-          choices: [...q.choices],
-          answerLines: q.answerLines,
-          answer: q.answer,
-          oxSentences: q.oxSentences.map((s) => ({ ...s })),
-        });
-        setListExpanded(true);
-      }
-    }
-  }, [editingId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const reset = () => {
-    setComposer({
-      ...blankComposer,
-      type: composer.type, // 유형은 유지
-    });
-    onSelectEdit(null);
-  };
-
-  const submit = () => {
-    if (isPlainTextEmpty(composer.questionText)) return;
-
-    // OX의 경우 빈 문장 제거
-    const cleanedOx = composer.oxSentences.filter(
-      (s) => s.text.trim() !== ''
-    );
-    // 빈 조건 제거
-    const cleanedConditions = composer.conditions.filter(
-      (c) => c.trim() !== ''
-    );
-
-    const payload: Omit<Question, 'id'> = {
-      ...composer,
-      oxSentences: cleanedOx,
-      conditions: cleanedConditions,
-    };
-
-    if (editingId) onUpdate(editingId, payload);
-    else onAdd(payload);
-    reset();
-  };
-
-  const typeCounts = useMemo(() => {
-    return {
-      mc: questions.filter((q) => q.type === 'multiple-choice').length,
-      wr: questions.filter((q) => q.type === 'written').length,
-      ox: questions.filter((q) => q.type === 'ox').length,
-    };
-  }, [questions]);
-
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      onHeaderChange({ logoDataUrl: reader.result as string });
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // 조건 관리
-  const addCondition = () =>
-    setComposer((s) => ({ ...s, conditions: [...s.conditions, ''] }));
-  const updateCondition = (i: number, v: string) =>
-    setComposer((s) => ({
-      ...s,
-      conditions: s.conditions.map((c, idx) => (idx === i ? v : c)),
-    }));
-  const removeCondition = (i: number) =>
-    setComposer((s) => ({
-      ...s,
-      conditions: s.conditions.filter((_, idx) => idx !== i),
-    }));
-
-  // OX 문장 관리
-  const addOxSentence = () =>
-    setComposer((s) => ({
-      ...s,
-      oxSentences: [
-        ...s.oxSentences,
-        {
-          id: `s${Date.now()}_${Math.random().toString(36).slice(2)}`,
-          text: '',
-          answer: '',
-          explanation: '',
-        },
-      ],
-    }));
-  const updateOxSentence = (i: number, patch: Partial<OxSentence>) =>
-    setComposer((s) => ({
-      ...s,
-      oxSentences: s.oxSentences.map((ox, idx) =>
-        idx === i ? { ...ox, ...patch } : ox
-      ),
-    }));
-  const removeOxSentence = (i: number) =>
-    setComposer((s) => ({
-      ...s,
-      oxSentences: s.oxSentences.filter((_, idx) => idx !== i),
-    }));
-
-  // 그룹화 모드 토글
-  const toggleGroupingMode = () => {
-    setGroupingMode((m) => !m);
-    setSelectedIds(new Set());
-  };
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-  const startGrouping = () => {
-    if (selectedIds.size < 2) {
-      alert('공통 발문으로 묶을 문제를 2개 이상 선택해주세요.');
-      return;
-    }
-    // 선택된 문제 중 이미 다른 그룹에 속한 문제가 있는지 확인
-    const selectedQs = questions.filter((q) => selectedIds.has(q.id));
-    const alreadyGrouped = selectedQs.filter((q) => q.groupId);
-    if (alreadyGrouped.length > 0) {
-      alert('이미 다른 공통 발문에 속한 문제가 있습니다. 먼저 그룹을 해제해주세요.');
-      return;
-    }
-    // 선택 순서가 아닌 문제 목록 순서로 정렬
-    const orderedIds = questions
-      .filter((q) => selectedIds.has(q.id))
-      .map((q) => q.id);
-    setGroupModal({ questionIds: orderedIds });
-  };
-
-  return (
-    <aside className="control-panel">
-      <div className="cp-brand">
-        <div className="cp-brand-mark">EX</div>
-        <div className="cp-brand-text">
-          <div className="cp-brand-title">EXAM STUDIO</div>
-          <div className="cp-brand-sub">학원 자료 편집 · 실시간 미리보기</div>
-        </div>
-        <button
-          className="cp-brand-action"
-          onClick={onNewBlank}
-          title="새 빈 시험지로 시작"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M12 5v14M5 12h14"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
-      </div>
-
-      {/* ───────── 01 시험지 정보 ───────── */}
-      <section className="cp-section">
-        <div className="cp-section-head">
-          <span className="cp-section-num">01</span>
-          <h3>시험지 정보</h3>
-        </div>
-
-        <div className="cp-logo-row">
-          <div className="cp-logo-preview">
-            {header.logoDataUrl ? (
-              <img src={header.logoDataUrl} alt="logo" />
-            ) : (
-              <span>{header.academyName?.[0] ?? 'A'}</span>
-            )}
-          </div>
-          <div className="cp-logo-controls">
-            <label className="cp-file-btn">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleLogoUpload}
-                hidden
-              />
-              로고 변경
-            </label>
-            <button
-              className="cp-link-btn"
-              onClick={() => onHeaderChange({ logoDataUrl: DEFAULT_LOGO })}
-            >
-              기본 로고로
-            </button>
-          </div>
-        </div>
-
-        <div className="cp-grid-2">
-          <Field
-            label="학원명"
-            value={header.academyName}
-            onChange={(v) => onHeaderChange({ academyName: v })}
-          />
-          <Field
-            label="학년"
-            value={header.grade}
-            placeholder="예: 고등 2학년"
-            onChange={(v) => onHeaderChange({ grade: v })}
-          />
-        </div>
-
-        <Field
-          label="타이틀"
-          value={header.title}
-          placeholder="예: 2026학년도 1학기 기말 대비"
-          onChange={(v) => onHeaderChange({ title: v })}
-        />
-
-        <div className="cp-field cp-field-emphasis">
-          <label>
-            <span className="cp-field-pin" />
-            시험 범위
-          </label>
-          <input
-            className="cp-input cp-input-emphasis"
-            value={header.scope}
-            onChange={(e) => onHeaderChange({ scope: e.target.value })}
-            placeholder="예: 엘레나T - 해리포터 Ch. 1 ~ 3"
-          />
-        </div>
-      </section>
-
-      {/* ───────── 02 문제 추가 ───────── */}
-      <section className="cp-section">
-        <div className="cp-section-head">
-          <span className="cp-section-num">02</span>
-          <h3>{editingId ? '문제 수정' : '문제 추가'}</h3>
-          {editingId && (
-            <button className="cp-mini-btn" onClick={reset}>
-              새 문제로
-            </button>
-          )}
-        </div>
-
-        <div className="cp-type-toggle cp-type-toggle-3">
-          <button
-            className={`cp-type-opt ${
-              composer.type === 'multiple-choice' ? 'active' : ''
-            }`}
-            onClick={() =>
-              setComposer({ ...composer, type: 'multiple-choice' })
-            }
-          >
-            <span className="cp-type-mark">①</span>
-            <span>객관식</span>
-            <span className="cp-type-count">{typeCounts.mc}</span>
-          </button>
-          <button
-            className={`cp-type-opt ${
-              composer.type === 'written' ? 'active' : ''
-            }`}
-            onClick={() => setComposer({ ...composer, type: 'written' })}
-          >
-            <span className="cp-type-mark">✎</span>
-            <span>서술형</span>
-            <span className="cp-type-count">{typeCounts.wr}</span>
-          </button>
-          <button
-            className={`cp-type-opt ${composer.type === 'ox' ? 'active' : ''}`}
-            onClick={() => setComposer({ ...composer, type: 'ox' })}
-          >
-            <span className="cp-type-mark">O/X</span>
-            <span>OX</span>
-            <span className="cp-type-count">{typeCounts.ox}</span>
-          </button>
-        </div>
-
-        <div className="cp-field">
-          <label>발문</label>
-          <RichTextEditor
-            value={composer.questionText}
-            onChange={(html) =>
-              setComposer({ ...composer, questionText: html })
-            }
-            placeholder="문제의 발문을 입력하세요. 드래그 선택 후 B / U 버튼으로 강조 가능"
-          />
-        </div>
-
-        {/* 본문 (모든 유형 공통) */}
-        <div className="cp-passage-block">
-          <label className="cp-checkbox-label">
-            <input
-              type="checkbox"
-              checked={composer.hasPassage}
-              onChange={(e) =>
-                setComposer({ ...composer, hasPassage: e.target.checked })
-              }
-            />
-            <span className="cp-checkbox-box" aria-hidden="true">
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-                <path
-                  d="M3 8.5L6.5 12L13 4.5"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </span>
-            <span className="cp-checkbox-text">
-              주어진 지문 / 본문 포함
-              <em>본문에도 굵게·밑줄 적용 가능</em>
-            </span>
-          </label>
-          {composer.hasPassage && (
-            <div className="cp-passage-input">
-              <RichTextEditor
-                value={composer.passage}
-                onChange={(html) =>
-                  setComposer({ ...composer, passage: html })
-                }
-                placeholder="발문과 선지(또는 답란) 사이에 들어갈 본문/지문/예문. 단어/구절 드래그 후 B 또는 U 버튼으로 강조 표시."
-                minHeight={120}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* 유형별 입력 영역 */}
-        {composer.type === 'multiple-choice' && (
-          <div className="cp-field">
-            <label>선택지</label>
-            <div className="cp-choices">
-              {composer.choices.map((c, i) => (
-                <div key={i} className="cp-choice-row">
-                  <span className="cp-choice-mark">
-                    {['①', '②', '③', '④', '⑤'][i]}
-                  </span>
-                  <input
-                    className="cp-input"
-                    value={c}
-                    placeholder={`선택지 ${i + 1}`}
-                    onChange={(e) => {
-                      const next = [...composer.choices];
-                      next[i] = e.target.value;
-                      setComposer({ ...composer, choices: next });
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {composer.type === 'written' && (
-          <>
-            {/* 영작 조건 박스 */}
-            <div className="cp-conditions-block">
-              <label className="cp-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={composer.conditions.length > 0}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      if (composer.conditions.length === 0) {
-                        setComposer({ ...composer, conditions: [''] });
-                      }
-                    } else {
-                      setComposer({ ...composer, conditions: [] });
-                    }
-                  }}
-                />
-                <span className="cp-checkbox-box" aria-hidden="true">
-                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-                    <path
-                      d="M3 8.5L6.5 12L13 4.5"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-                <span className="cp-checkbox-text">
-                  영작 조건 포함
-                  <em>주어진 단어 활용·어법 조건 등</em>
-                </span>
-              </label>
-
-              {composer.conditions.length > 0 && (
-                <div className="cp-conditions-list">
-                  {composer.conditions.map((c, i) => (
-                    <div key={i} className="cp-condition-row">
-                      <span className="cp-condition-num">{i + 1}.</span>
-                      <input
-                        className="cp-input"
-                        value={c}
-                        placeholder={`조건 ${i + 1}`}
-                        onChange={(e) => updateCondition(i, e.target.value)}
-                      />
-                      <button
-                        className="cp-condition-del"
-                        onClick={() => removeCondition(i)}
-                        title="조건 삭제"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                  <button className="cp-condition-add" onClick={addCondition}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M12 5v14M5 12h14"
-                        stroke="currentColor"
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    조건 추가
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="cp-field">
-              <label>정답 작성란 줄 수</label>
-              <div className="cp-stepper">
-                <button
-                  onClick={() =>
-                    setComposer({
-                      ...composer,
-                      answerLines: Math.max(1, composer.answerLines - 1),
-                    })
-                  }
-                >
-                  −
-                </button>
-                <span>{composer.answerLines}줄</span>
-                <button
-                  onClick={() =>
-                    setComposer({
-                      ...composer,
-                      answerLines: Math.min(20, composer.answerLines + 1),
-                    })
-                  }
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-
-        {composer.type === 'ox' && (
-          <div className="cp-field">
-            <label>OX 판단 문장</label>
-            <div className="cp-ox-list">
-              {composer.oxSentences.length === 0 && (
-                <div className="cp-ox-empty">
-                  아직 문장이 없습니다. 아래 버튼으로 추가하세요.
-                </div>
-              )}
-              {composer.oxSentences.map((s, i) => (
-                <div key={s.id} className="cp-ox-row">
-                  <div className="cp-ox-row-head">
-                    <span className="cp-ox-num">({i + 1})</span>
-                    <textarea
-                      className="cp-textarea cp-ox-text"
-                      value={s.text}
-                      placeholder="OX로 판단할 문장 (1~2문장)"
-                      rows={2}
-                      onChange={(e) =>
-                        updateOxSentence(i, { text: e.target.value })
-                      }
-                    />
-                    <button
-                      className="cp-condition-del"
-                      onClick={() => removeOxSentence(i)}
-                      title="문장 삭제"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <button className="cp-condition-add" onClick={addOxSentence}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M12 5v14M5 12h14"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                문장 추가
-              </button>
-            </div>
-            <small className="cp-hint">
-              ※ 정답(O/X) 및 X일 경우 해설은 <strong>04. 답지 작성</strong> 섹션에서 입력하세요.
-            </small>
-          </div>
-        )}
-
-        <div className="cp-actions">
-          <button className="cp-btn-primary" onClick={submit}>
-            {editingId ? '수정 적용' : '시험지에 추가'}
-          </button>
-          {editingId && (
-            <button
-              className="cp-btn-ghost danger"
-              onClick={() => {
-                if (confirm('이 문제를 삭제할까요?')) {
-                  onDelete(editingId);
-                  reset();
-                }
-              }}
-            >
-              삭제
-            </button>
-          )}
-        </div>
-      </section>
-
-      {/* ───────── 03 문제 목록 ───────── */}
-      <section className="cp-section">
-        <button
-          className="cp-section-head cp-section-head-toggle"
-          onClick={() => setListExpanded((v) => !v)}
-          aria-expanded={listExpanded}
-        >
-          <span className="cp-section-num">03</span>
-          <h3>문제 목록</h3>
-          <span className="cp-list-total">{questions.length} 문항</span>
-          <Chevron open={listExpanded} />
-        </button>
-
-        {listExpanded && (
-          <>
-            {questions.length > 0 && (
-              <div className="cp-grouping-bar">
-                {!groupingMode ? (
-                  <button
-                    className="cp-grouping-btn"
-                    onClick={toggleGroupingMode}
-                    title="여러 문제를 같은 발문으로 묶기"
-                  >
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                    >
-                      <rect
-                        x="3"
-                        y="3"
-                        width="7"
-                        height="7"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                      />
-                      <rect
-                        x="14"
-                        y="3"
-                        width="7"
-                        height="7"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                      />
-                      <rect
-                        x="3"
-                        y="14"
-                        width="7"
-                        height="7"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                      />
-                    </svg>
-                    공통 발문으로 묶기
-                  </button>
-                ) : (
-                  <div className="cp-grouping-active">
-                    <span className="cp-grouping-count">
-                      {selectedIds.size}개 선택됨
-                    </span>
-                    <button className="cp-grouping-apply" onClick={startGrouping}>
-                      묶기
-                    </button>
-                    <button
-                      className="cp-grouping-cancel"
-                      onClick={toggleGroupingMode}
-                    >
-                      취소
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {questions.length === 0 ? (
-              <div className="cp-empty">아직 추가된 문제가 없습니다.</div>
-            ) : (
-              <QuestionList
-                questions={questions}
-                groups={groups}
-                editingId={editingId}
-                groupingMode={groupingMode}
-                selectedIds={selectedIds}
-                onToggleSelect={toggleSelect}
-                onSelectEdit={onSelectEdit}
-                onDelete={onDelete}
-                onMove={onMove}
-                onEditGroup={(gid) => setEditingGroupId(gid)}
-                onUngroup={onUngroup}
-              />
-            )}
-          </>
-        )}
-      </section>
-
-      {/* ───────── 04 답지 작성 ───────── */}
-      <section className="cp-section">
-        <button
-          className="cp-section-head cp-section-head-toggle"
-          onClick={() => setAnswersExpanded((v) => !v)}
-          aria-expanded={answersExpanded}
-        >
-          <span className="cp-section-num">04</span>
-          <h3>답지 작성</h3>
-          <span className="cp-list-total">맨 뒷장에 첨부</span>
-          <Chevron open={answersExpanded} />
-        </button>
-
-        {answersExpanded &&
-          (questions.length === 0 ? (
-            <div className="cp-empty">먼저 문제를 추가해 주세요.</div>
-          ) : (
-            <div className="cp-answer-list">
-              {questions.map((q, idx) => (
-                <AnswerRow
-                  key={q.id}
-                  q={q}
-                  num={idx + 1}
-                  onUpdate={onUpdate}
-                />
-              ))}
-            </div>
-          ))}
-      </section>
-
-      {/* ───────── 05 라이브러리 ───────── */}
-      <section className="cp-section">
-        <button
-          className="cp-section-head cp-section-head-toggle"
-          onClick={() => setLibraryExpanded((v) => !v)}
-          aria-expanded={libraryExpanded}
-        >
-          <span className="cp-section-num">05</span>
-          <h3>라이브러리</h3>
-          <span className="cp-list-total">{library.length} 시험지</span>
-          <Chevron open={libraryExpanded} />
-        </button>
-
-        {libraryExpanded && (
-          <>
-            <button
-              className="cp-btn-primary cp-library-save-btn"
-              onClick={onSavePaper}
-              disabled={questions.length === 0}
-              title={
-                questions.length === 0
-                  ? '문제를 1개 이상 추가하면 저장할 수 있습니다'
-                  : '현재 시험지를 라이브러리에 저장합니다'
-              }
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              현재 시험지 저장
-            </button>
-
-            {library.length === 0 ? (
-              <div className="cp-empty">
-                저장된 시험지가 없습니다.
-                <br />
-                <small>
-                  완성된 시험지를 저장하면 나중에 다시 불러올 수 있어요.
-                </small>
-              </div>
-            ) : (
-              <ul className="cp-library-list">
-                {library.map((paper) => (
-                  <li key={paper.id} className="cp-library-item">
-                    <div className="cp-library-info">
-                      <div className="cp-library-name">{paper.name}</div>
-                      <div className="cp-library-meta">
-                        <span>{paper.questions.length}문항</span>
-                        <span className="cp-library-dot">·</span>
-                        <span>{formatRelDate(paper.createdAt)}</span>
-                      </div>
-                    </div>
-                    <div className="cp-library-tools">
-                      <button
-                        className="cp-library-load"
-                        onClick={() => onLoadPaper(paper.id)}
-                        title="이 시험지로 불러오기"
-                      >
-                        불러오기
-                      </button>
-                      <button
-                        className="cp-library-delete danger"
-                        onClick={() => onDeletePaper(paper.id)}
-                        title="라이브러리에서 삭제"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <div className="cp-library-note">
-              <svg
-                width="11"
-                height="11"
-                viewBox="0 0 24 24"
-                fill="none"
-                style={{ flexShrink: 0 }}
-              >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                />
-                <path
-                  d="M12 8v4M12 16h.01"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-              브라우저에 저장됩니다. 브라우저 데이터를 지우면 라이브러리도 함께
-              사라질 수 있습니다.
-            </div>
-          </>
-        )}
-      </section>
-
-      {/* 공통 발문 생성 모달 */}
-      {groupModal && (
-        <GroupModal
-          questionIds={groupModal.questionIds}
-          onClose={() => setGroupModal(null)}
-          onConfirm={(commonQT, hasP, p) => {
-            onCreateGroup(groupModal.questionIds, commonQT, hasP, p);
-            setGroupModal(null);
-            setGroupingMode(false);
-            setSelectedIds(new Set());
-          }}
-        />
-      )}
-
-      {/* 그룹 수정 모달 */}
-      {editingGroupId && (
-        <GroupEditModal
-          group={groups.find((g) => g.id === editingGroupId)!}
-          onClose={() => setEditingGroupId(null)}
-          onSave={(patch) => {
-            onUpdateGroup(editingGroupId, patch);
-            setEditingGroupId(null);
-          }}
-          onUngroup={() => {
-            if (confirm('이 공통 발문 그룹을 해제할까요?\n(개별 문제는 그대로 유지됩니다)')) {
-              onUngroup(editingGroupId);
-              setEditingGroupId(null);
-            }
-          }}
-        />
-      )}
-    </aside>
-  );
+.cp-modal-foot .cp-btn-primary,
+.cp-modal-foot .cp-btn-ghost {
+  flex: none;
+  padding: 10px 18px;
+  font-size: 13px;
 }
 
-// ─────────── 공통 발문 생성/수정 모달 ───────────
-function GroupModal({
-  questionIds,
-  onClose,
-  onConfirm,
-}: {
-  questionIds: string[];
-  onClose: () => void;
-  onConfirm: (commonQT: string, hasP: boolean, p: string) => void;
-}) {
-  const [commonQT, setCommonQT] = useState('');
-  const [hasP, setHasP] = useState(false);
-  const [p, setP] = useState('');
-
-  return (
-    <div className="cp-modal-backdrop" onClick={onClose}>
-      <div className="cp-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="cp-modal-head">
-          <h3>공통 발문 그룹 생성</h3>
-          <button className="cp-modal-close" onClick={onClose}>
-            ×
-          </button>
-        </div>
-        <div className="cp-modal-body">
-          <p className="cp-modal-info">
-            선택된 <strong>{questionIds.length}개 문제</strong>가 같은 발문/본문을
-            공유하게 됩니다. 각 문제의 개별 발문은 그대로 유지됩니다.
-          </p>
-
-          <div className="cp-field">
-            <label>공통 발문</label>
-            <RichTextEditor
-              value={commonQT}
-              onChange={setCommonQT}
-              placeholder="예: 다음 글을 읽고 물음에 답하시오."
-              minHeight={70}
-            />
-          </div>
-
-          <div className="cp-passage-block">
-            <label className="cp-checkbox-label">
-              <input
-                type="checkbox"
-                checked={hasP}
-                onChange={(e) => setHasP(e.target.checked)}
-              />
-              <span className="cp-checkbox-box" aria-hidden="true">
-                <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-                  <path
-                    d="M3 8.5L6.5 12L13 4.5"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-              <span className="cp-checkbox-text">
-                공통 본문 포함
-                <em>여러 문제가 같은 지문을 공유</em>
-              </span>
-            </label>
-            {hasP && (
-              <div className="cp-passage-input">
-                <RichTextEditor
-                  value={p}
-                  onChange={setP}
-                  placeholder="공통 지문/본문 입력. 단어 드래그 후 B / U 로 강조."
-                  minHeight={140}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="cp-modal-foot">
-          <button className="cp-btn-ghost" onClick={onClose}>
-            취소
-          </button>
-          <button
-            className="cp-btn-primary"
-            onClick={() => onConfirm(commonQT, hasP, p)}
-            disabled={isPlainTextEmpty(commonQT)}
-          >
-            그룹 생성
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+/* ─── 라이브러리 ─── */
+.cp-library-save-btn {
+  width: 100%;
+  margin-bottom: 14px;
 }
 
-function GroupEditModal({
-  group,
-  onClose,
-  onSave,
-  onUngroup,
-}: {
-  group: CommonGroup;
-  onClose: () => void;
-  onSave: (patch: Partial<CommonGroup>) => void;
-  onUngroup: () => void;
-}) {
-  const [commonQT, setCommonQT] = useState(group.commonQuestionText);
-  const [hasP, setHasP] = useState(group.hasCommonPassage);
-  const [p, setP] = useState(group.commonPassage);
-
-  return (
-    <div className="cp-modal-backdrop" onClick={onClose}>
-      <div className="cp-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="cp-modal-head">
-          <h3>공통 발문 수정</h3>
-          <button className="cp-modal-close" onClick={onClose}>
-            ×
-          </button>
-        </div>
-        <div className="cp-modal-body">
-          <div className="cp-field">
-            <label>공통 발문</label>
-            <RichTextEditor
-              value={commonQT}
-              onChange={setCommonQT}
-              placeholder="공통 발문"
-              minHeight={70}
-            />
-          </div>
-
-          <div className="cp-passage-block">
-            <label className="cp-checkbox-label">
-              <input
-                type="checkbox"
-                checked={hasP}
-                onChange={(e) => setHasP(e.target.checked)}
-              />
-              <span className="cp-checkbox-box" aria-hidden="true">
-                <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-                  <path
-                    d="M3 8.5L6.5 12L13 4.5"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-              <span className="cp-checkbox-text">공통 본문 포함</span>
-            </label>
-            {hasP && (
-              <div className="cp-passage-input">
-                <RichTextEditor
-                  value={p}
-                  onChange={setP}
-                  placeholder="공통 지문/본문"
-                  minHeight={140}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="cp-modal-foot">
-          <button className="cp-btn-ghost danger" onClick={onUngroup}>
-            그룹 해제
-          </button>
-          <div style={{ flex: 1 }} />
-          <button className="cp-btn-ghost" onClick={onClose}>
-            취소
-          </button>
-          <button
-            className="cp-btn-primary"
-            onClick={() =>
-              onSave({
-                commonQuestionText: commonQT,
-                hasCommonPassage: hasP,
-                commonPassage: p,
-              })
-            }
-          >
-            저장
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+.cp-library-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 0 0 14px 0;
 }
 
-// ─────────── 문제 목록 (그룹 표시 포함) ───────────
-function QuestionList({
-  questions,
-  groups,
-  editingId,
-  groupingMode,
-  selectedIds,
-  onToggleSelect,
-  onSelectEdit,
-  onDelete,
-  onMove,
-  onEditGroup,
-  onUngroup,
-}: {
-  questions: Question[];
-  groups: CommonGroup[];
-  editingId: string | null;
-  groupingMode: boolean;
-  selectedIds: Set<string>;
-  onToggleSelect: (id: string) => void;
-  onSelectEdit: (id: string) => void;
-  onDelete: (id: string) => void;
-  onMove: (id: string, dir: -1 | 1) => void;
-  onEditGroup: (gid: string) => void;
-  onUngroup: (gid: string) => void;
-}) {
-  // 연속된 같은 그룹끼리 묶어 렌더링
-  const blocks: Array<
-    | { kind: 'single'; q: Question; index: number }
-    | { kind: 'group'; group: CommonGroup; items: Array<{ q: Question; index: number }> }
-  > = [];
-
-  questions.forEach((q, idx) => {
-    if (q.groupId) {
-      const last = blocks[blocks.length - 1];
-      if (last && last.kind === 'group' && last.group.id === q.groupId) {
-        last.items.push({ q, index: idx });
-        return;
-      }
-      const group = groups.find((g) => g.id === q.groupId);
-      if (group) {
-        blocks.push({ kind: 'group', group, items: [{ q, index: idx }] });
-        return;
-      }
-    }
-    blocks.push({ kind: 'single', q, index: idx });
-  });
-
-  const renderItem = (q: Question, idx: number) => {
-    const typeLabel =
-      q.type === 'multiple-choice' ? '객' : q.type === 'written' ? '술' : 'OX';
-    const tagClass =
-      q.type === 'multiple-choice'
-        ? 'tag-mc'
-        : q.type === 'written'
-          ? 'tag-wr'
-          : 'tag-ox';
-    const isSelected = selectedIds.has(q.id);
-
-    return (
-      <li
-        key={q.id}
-        className={`cp-list-item ${editingId === q.id ? 'editing' : ''} ${
-          groupingMode && isSelected ? 'selected' : ''
-        }`}
-      >
-        {groupingMode && (
-          <label className="cp-list-select">
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={() => onToggleSelect(q.id)}
-              disabled={!!q.groupId}
-            />
-            <span className="cp-checkbox-box" aria-hidden="true">
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-                <path
-                  d="M3 8.5L6.5 12L13 4.5"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </span>
-          </label>
-        )}
-        <div className={`cp-tag ${tagClass}`}>
-          {typeLabel}
-          <em>{idx + 1}</em>
-        </div>
-        <div className="cp-list-text" onClick={() => onSelectEdit(q.id)}>
-          {q.hasPassage && <span className="cp-list-badge">본문</span>}
-          {q.conditions.length > 0 && (
-            <span className="cp-list-badge cond">조건</span>
-          )}
-          {isPlainTextEmpty(q.questionText) ? (
-            <i>(제목 없음)</i>
-          ) : (
-            <RichTextDisplay html={q.questionText} />
-          )}
-        </div>
-        <div className="cp-list-tools">
-          <button
-            title="위로"
-            onClick={() => onMove(q.id, -1)}
-            disabled={idx === 0}
-          >
-            ↑
-          </button>
-          <button
-            title="아래로"
-            onClick={() => onMove(q.id, 1)}
-            disabled={idx === questions.length - 1}
-          >
-            ↓
-          </button>
-          <button
-            title="삭제"
-            className="danger"
-            onClick={() => onDelete(q.id)}
-          >
-            ×
-          </button>
-        </div>
-      </li>
-    );
-  };
-
-  return (
-    <ul className="cp-list">
-      {blocks.map((b, bi) => {
-        if (b.kind === 'single') {
-          return <Fragment key={`s-${b.q.id}`}>{renderItem(b.q, b.index)}</Fragment>;
-        }
-        const firstIdx = b.items[0].index + 1;
-        const lastIdx = b.items[b.items.length - 1].index + 1;
-        return (
-          <li key={`g-${b.group.id}`} className="cp-list-group">
-            <div className="cp-list-group-head">
-              <span className="cp-list-group-tag">
-                공통 [{firstIdx}~{lastIdx}]
-              </span>
-              <span className="cp-list-group-preview">
-                {isPlainTextEmpty(b.group.commonQuestionText) ? (
-                  <i>발문 없음</i>
-                ) : (
-                  <RichTextDisplay html={b.group.commonQuestionText} />
-                )}
-              </span>
-              <button
-                className="cp-list-group-edit"
-                onClick={() => onEditGroup(b.group.id)}
-                title="공통 발문 수정"
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            </div>
-            <ul className="cp-list-group-items">
-              {b.items.map((it) => renderItem(it.q, it.index))}
-            </ul>
-          </li>
-        );
-      })}
-    </ul>
-  );
+.cp-library-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  transition: all 0.15s ease;
 }
 
-// ─────────── 답지 작성 행 (유형별) ───────────
-function AnswerRow({
-  q,
-  num,
-  onUpdate,
-}: {
-  q: Question;
-  num: number;
-  onUpdate: (id: string, patch: Partial<Question>) => void;
-}) {
-  if (q.type === 'multiple-choice') {
-    return (
-      <div className="cp-answer-row">
-        <div className="cp-tag tag-mc">
-          객<em>{num}</em>
-        </div>
-        <div className="cp-answer-mc">
-          {['①', '②', '③', '④', '⑤'].map((opt) => (
-            <button
-              key={opt}
-              className={`cp-answer-mc-btn ${q.answer === opt ? 'active' : ''}`}
-              onClick={() => onUpdate(q.id, { answer: opt })}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
+.cp-library-item:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+
+.cp-library-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cp-library-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.005em;
+  word-break: keep-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-library-meta {
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cp-library-dot {
+  color: var(--text-4);
+}
+
+.cp-library-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.cp-library-load {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 7px 12px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(245, 185, 66, 0.3);
+  border-radius: 7px;
+  transition: all 0.15s ease;
+}
+
+.cp-library-load:hover {
+  background: var(--accent);
+  color: #1a1207;
+  border-color: var(--accent);
+}
+
+.cp-library-delete {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-3);
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.cp-library-delete:hover {
+  color: var(--danger);
+  background: rgba(229, 115, 115, 0.1);
+}
+
+.cp-library-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-4);
+  line-height: 1.5;
+  padding: 8px 10px;
+  background: var(--info-soft);
+  border-radius: 6px;
+  border: 1px solid rgba(111, 168, 220, 0.18);
+}
+
+.cp-library-note svg {
+  color: var(--info);
+  margin-top: 1px;
+}
+
+/* ───────────────────────────────────────────────────────
+   STAGE / PAPER
+─────────────────────────────────────────────────────── */
+.paper-stage {
+  background: var(--stage-bg);
+  background-image: linear-gradient(
+      to right,
+      var(--stage-grid) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, var(--stage-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+  height: 100vh;
+  overflow-y: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.paper-stage::-webkit-scrollbar {
+  width: 12px;
+}
+.paper-stage::-webkit-scrollbar-track {
+  background: transparent;
+}
+.paper-stage::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+  border: 3px solid var(--stage-bg);
+}
+.paper-stage::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+.paper-stage-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 28px;
+  background: rgba(15, 17, 21, 0.85);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+
+.paper-stage-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.paper-stage-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  text-transform: uppercase;
+}
+
+.paper-stage-pages {
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+.paper-stage-pages strong {
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 3px;
+  font-family: var(--font-mono);
+}
+
+.paper-print-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  background: linear-gradient(180deg, var(--accent-hi) 0%, var(--accent) 100%);
+  color: #1a1207;
+  border-radius: var(--r-md);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 6px 16px -4px var(--accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.paper-print-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -6px var(--accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.paper-print-btn:active {
+  transform: translateY(0);
+}
+
+.measure-layer {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  top: -9999px;
+  left: -9999px;
+  font-family: var(--font-paper);
+  background: var(--paper);
+  font-size: 9pt;
+  line-height: 1.55;
+  color: var(--ink);
+  word-break: keep-all;
+}
+
+.measure-col {
+  display: block;
+}
+
+.measure-item {
+  display: block;
+}
+
+.paper-stack {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  padding: 36px 20px 80px;
+}
+
+.paper-frame {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.paper {
+  width: 210mm;
+  height: 297mm;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-paper);
+  font-size: 9pt;
+  line-height: 1.55;
+  position: relative;
+  transform-origin: top left;
+  box-shadow: var(--shadow-paper);
+  overflow: hidden;
+  word-break: keep-all;
+}
+
+.paper .corner {
+  position: absolute;
+  width: 8mm;
+  height: 8mm;
+  border-color: var(--ink-3);
+  border-style: solid;
+  border-width: 0;
+  opacity: 0.55;
+}
+
+.paper .corner.tl {
+  top: 5mm;
+  left: 5mm;
+  border-top-width: 1px;
+  border-left-width: 1px;
+}
+.paper .corner.tr {
+  top: 5mm;
+  right: 5mm;
+  border-top-width: 1px;
+  border-right-width: 1px;
+}
+.paper .corner.bl {
+  bottom: 5mm;
+  left: 5mm;
+  border-bottom-width: 1px;
+  border-left-width: 1px;
+}
+.paper .corner.br {
+  bottom: 5mm;
+  right: 5mm;
+  border-bottom-width: 1px;
+  border-right-width: 1px;
+}
+
+.paper-inner {
+  position: absolute;
+  inset: 0;
+  padding: 11mm 12mm 11mm;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ───────────────────────────────────────────────────────
+   PAPER HEADER
+─────────────────────────────────────────────────────── */
+.paper-header {
+  flex-shrink: 0;
+  margin-bottom: 4mm;
+  padding-bottom: 2.5mm;
+  border-bottom: 1px solid var(--ink);
+}
+
+.paper-header-main {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 5mm;
+  align-items: center;
+}
+
+.paper-header-logo {
+  width: 11mm;
+  height: 11mm;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-paper);
+  font-weight: 800;
+  font-size: 12pt;
+  border-radius: 1.5mm;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.paper-header-logo.has-image {
+  width: 32mm;
+  height: 11mm;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+}
+
+.paper-header-logo.has-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.paper-header-text {
+  min-width: 0;
+}
+
+.paper-header-meta {
+  font-size: 8pt;
+  font-weight: 500;
+  color: var(--ink-3);
+  letter-spacing: 0.04em;
+  margin-bottom: 0.5mm;
+  display: flex;
+  align-items: center;
+  gap: 1.5mm;
+}
+
+.paper-header-dot {
+  color: var(--ink-muted);
+}
+
+.paper-header-title {
+  font-size: 12pt;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.paper-header-name {
+  display: flex;
+  align-items: end;
+  gap: 1.5mm;
+  font-size: 8pt;
+  flex-shrink: 0;
+}
+
+.paper-header-name label {
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+.paper-header-name span {
+  display: inline-block;
+  width: 28mm;
+  border-bottom: 0.6px solid var(--ink);
+  height: 4mm;
+}
+
+.paper-header-scope {
+  display: flex;
+  align-items: baseline;
+  gap: 3mm;
+  margin-top: 2mm;
+  padding: 1.4mm 3mm;
+  background: rgba(0, 0, 0, 0.04);
+  border-left: 1mm solid var(--ink);
+  border-radius: 0 1mm 1mm 0;
+}
+
+.paper-header-scope-label {
+  font-size: 8pt;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+}
+
+.paper-header-scope-text {
+  font-size: 9.5pt;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+
+/* ─── 미니 헤더 ─── */
+.paper-header-mini {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+  padding-bottom: 2mm;
+  margin-bottom: 4mm;
+  border-bottom: 0.6px solid var(--ink-3);
+}
+
+.paper-header-mini-logo {
+  height: 6mm;
+  width: auto;
+  max-width: 22mm;
+  display: block;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.paper-header-mini-mark {
+  width: 6mm;
+  height: 6mm;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-paper);
+  font-weight: 800;
+  font-size: 9pt;
+  border-radius: 1mm;
+  flex-shrink: 0;
+}
+
+.paper-header-mini-text {
+  display: flex;
+  align-items: baseline;
+  gap: 2mm;
+  flex: 1;
+  min-width: 0;
+}
+
+.paper-header-mini-academy {
+  font-size: 8pt;
+  font-weight: 500;
+  color: var(--ink-3);
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.paper-header-mini-dot {
+  color: var(--ink-muted);
+  font-size: 8pt;
+}
+
+.paper-header-mini-title {
+  font-size: 10pt;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.paper-header-mini-scope {
+  font-size: 8pt;
+  color: var(--ink-2);
+  font-weight: 500;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2mm;
+}
+
+.paper-header-mini-scope strong {
+  font-weight: 700;
+  color: var(--ink);
+  font-size: 7.5pt;
+  letter-spacing: 0.08em;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 0.5mm 1.8mm;
+  border-radius: 1mm;
+}
+
+/* ─── 컬럼 ─── */
+.paper-columns {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  column-gap: 0;
+  min-height: 0;
+  position: relative;
+}
+
+.paper-divider {
+  width: 10mm;
+  position: relative;
+}
+
+.paper-divider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 0.5px;
+  background: var(--rule);
+}
+
+.paper-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6mm;
+  min-width: 0;
+}
+
+/* ─── 문제 ─── */
+.q {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5mm;
+}
+
+.q-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2mm;
+  align-items: baseline;
+}
+
+.q-num {
+  font-family: var(--font-paper);
+  font-weight: 700;
+  font-size: 10pt;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+
+.q-text {
+  font-size: 9pt;
+  color: var(--ink);
+  line-height: 1.65;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  word-break: keep-all;
+  margin: 0;
+}
+
+.q-text strong {
+  font-weight: 800;
+}
+
+.q-text u {
+  text-decoration: underline;
+  text-underline-offset: 1.5px;
+}
+
+.q-text-empty {
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+/* ─── 본문/지문 박스 (4면 실선 + 양쪽정렬) ─── */
+.q-passage {
+  margin-left: 5mm;
+  padding: 2.5mm 3mm;
+  border: 0.5px solid var(--ink-3);
+  background: rgba(0, 0, 0, 0.012);
+  font-size: 9pt;
+  line-height: 1.7;
+  color: var(--ink);
+  word-break: keep-all;
+  white-space: pre-wrap;
+  border-radius: 1mm;
+  text-align: justify;
+  text-justify: inter-word;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+
+.q-passage strong {
+  font-weight: 800;
+}
+
+.q-passage u {
+  text-decoration: underline;
+  text-underline-offset: 1.5px;
+}
+
+/* ─── 영작 조건 박스 (좌우 굵은 바 + 상단 칩) ─── */
+.q-conditions {
+  margin-left: 5mm;
+  position: relative;
+  padding: 3mm 4mm 2.5mm;
+  background: var(--paper);
+  border-left: 1mm solid var(--ink);
+  border-right: 1mm solid var(--ink);
+  margin-top: 1.5mm;
+}
+
+.q-conditions-label {
+  position: absolute;
+  top: -2mm;
+  left: 3mm;
+  font-size: 7.5pt;
+  font-weight: 700;
+  color: var(--paper);
+  background: var(--ink);
+  padding: 0.6mm 2.2mm;
+  letter-spacing: 0.15em;
+  border-radius: 0.8mm;
+  line-height: 1;
+}
+
+.q-conditions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: cond-counter;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8mm;
+}
+
+.q-conditions-list li {
+  counter-increment: cond-counter;
+  display: grid;
+  grid-template-columns: 4mm 1fr;
+  gap: 0.5mm;
+  font-size: 8.8pt;
+  line-height: 1.55;
+  color: var(--ink);
+  word-break: keep-all;
+}
+
+.q-conditions-list li::before {
+  content: counter(cond-counter) '.';
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ─── 객관식 선지 ─── */
+.q-choice-item {
+  display: flex;
+  align-items: baseline;
+  gap: 1.6mm;
+  font-size: 8.5pt;
+  line-height: 1.55;
+  color: var(--ink-2);
+  padding-left: 5mm;
+}
+
+.q-choice-mark {
+  font-size: 9pt;
+  color: var(--ink);
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.q-choice-text {
+  flex: 1;
+  word-break: keep-all;
+}
+
+/* ─── 서술형 답란 ─── */
+.q-answer {
+  margin-left: 5mm;
+  border: 0.6px solid var(--ink-3);
+  border-radius: 1mm;
+  overflow: hidden;
+}
+
+.q-answer-label {
+  font-size: 7pt;
+  font-weight: 700;
+  color: var(--paper);
+  background: var(--ink);
+  padding: 0.7mm 2.2mm;
+  display: inline-block;
+  letter-spacing: 0.2em;
+  border-radius: 0 0 1mm 0;
+}
+
+.q-answer-lines {
+  padding: 1.5mm 3mm 1mm;
+}
+
+.q-answer-line {
+  height: 6.2mm;
+  border-bottom: 0.5px solid var(--rule-soft);
+}
+
+.q-answer-line:last-child {
+  border-bottom: none;
+}
+
+/* ─── OX 블록 ─── */
+.q-ox-list {
+  list-style: none;
+  margin: 0;
+  padding-left: 5mm;
+  display: flex;
+  flex-direction: column;
+  gap: 1.6mm;
+}
+
+.q-ox-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: baseline;
+  gap: 1.5mm;
+  font-size: 9pt;
+  line-height: 1.55;
+  color: var(--ink);
+  word-break: keep-all;
+}
+
+.q-ox-num {
+  font-family: var(--font-paper);
+  font-weight: 600;
+  color: var(--ink-2);
+  flex-shrink: 0;
+}
+
+.q-ox-text {
+  word-break: keep-all;
+}
+
+.q-ox-dots {
+  height: 1px;
+  flex: 1;
+  border-bottom: 0.4px dotted var(--ink-3);
+  margin: 0 1mm;
+  align-self: end;
+  margin-bottom: 1.2mm;
+}
+
+.q-ox-box {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 9pt;
+  color: var(--ink);
+  flex-shrink: 0;
+  letter-spacing: 0.05em;
+}
+
+.q-ox-empty {
+  font-size: 8pt;
+  color: var(--ink-muted);
+  font-style: italic;
+  padding-left: 5mm;
+}
+
+/* ─── 공통 발문 그룹 (캔버스) ─── */
+.q-group-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5mm;
+}
+
+.q-common-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5mm;
+}
+
+.q-common-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2mm;
+  align-items: baseline;
+}
+
+.q-common-range {
+  font-family: var(--font-paper);
+  font-weight: 800;
+  font-size: 10pt;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+
+.q-common-text {
+  font-size: 9pt;
+  color: var(--ink);
+  line-height: 1.65;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  word-break: keep-all;
+  margin: 0;
+}
+
+.q-common-text strong {
+  font-weight: 800;
+}
+
+.q-common-text u {
+  text-decoration: underline;
+  text-underline-offset: 1.5px;
+}
+
+/* 그룹 내 개별 발문은 약간 작게 */
+.q-head-in-group .q-num {
+  font-size: 9.5pt;
+}
+
+.q-head-in-group .q-text {
+  font-size: 9pt;
+  font-weight: 500;
+}
+
+/* ─── 푸터 ─── */
+.paper-footer {
+  flex-shrink: 0;
+  margin-top: 3mm;
+  padding-top: 1.5mm;
+  border-top: 0.5px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 7.5pt;
+  color: var(--ink-muted);
+}
+
+.paper-footer-academy {
+  letter-spacing: 0.12em;
+}
+
+.paper-footer-pageno {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+/* ───────────────────────────────────────────────────────
+   ANSWER KEY (2단 구성)
+─────────────────────────────────────────────────────── */
+.answer-header {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5mm;
+  align-items: end;
+  padding-bottom: 2.5mm;
+  margin-bottom: 5mm;
+  border-bottom: 1px solid var(--ink);
+}
+
+.answer-header-text {
+  min-width: 0;
+}
+
+.answer-header-tag {
+  font-family: var(--font-mono);
+  font-size: 7.5pt;
+  font-weight: 600;
+  color: var(--ink-3);
+  letter-spacing: 0.18em;
+  margin-bottom: 1mm;
+}
+
+.answer-header-title {
+  font-size: 13pt;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.015em;
+  margin: 0;
+  line-height: 1;
+}
+
+.answer-header-meta {
+  font-size: 8pt;
+  color: var(--ink-3);
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5mm;
+}
+
+.answer-header-meta span:first-child {
+  font-weight: 600;
+  color: var(--ink-2);
+  letter-spacing: 0.05em;
+}
+
+/* 2단 구성 */
+.answer-body-2col {
+  flex: 1;
+  column-count: 2;
+  column-gap: 10mm;
+  column-rule: 0.5px solid var(--rule);
+}
+
+.answer-item {
+  display: grid;
+  grid-template-columns: 8mm 1fr;
+  gap: 1.5mm;
+  padding: 1.8mm 0;
+  border-bottom: 0.4px dashed var(--rule);
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.answer-item:last-child {
+  border-bottom: none;
+}
+
+.answer-item-num {
+  font-family: var(--font-paper);
+  font-weight: 700;
+  font-size: 9.5pt;
+  color: var(--ink);
+  text-align: right;
+  padding-top: 0.2mm;
+}
+
+.answer-item-body {
+  font-size: 9pt;
+  line-height: 1.55;
+  color: var(--ink);
+  word-break: keep-all;
+}
+
+.answer-item-value {
+  font-weight: 700;
+  font-size: 11pt;
+  color: var(--ink);
+}
+
+.answer-item-text {
+  font-weight: 500;
+  font-size: 8.8pt;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.answer-item-text i {
+  color: var(--ink-muted);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* OX 답지 */
+.answer-item-ox {
+  break-inside: avoid;
+}
+
+.answer-ox-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6mm;
+}
+
+.answer-ox-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 1.2mm;
+  font-size: 8.8pt;
+  line-height: 1.5;
+}
+
+.answer-ox-num {
+  font-family: var(--font-paper);
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.answer-ox-mark {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 10pt;
+  color: var(--ink-muted);
+  min-width: 5mm;
+}
+
+.answer-ox-mark.is-o {
+  color: var(--ink);
+}
+
+.answer-ox-mark.is-x {
+  color: var(--ink);
+}
+
+.answer-ox-explanation {
+  font-size: 7.8pt;
+  color: var(--ink-3);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* ───────────────────────────────────────────────────────
+   PRINT
+─────────────────────────────────────────────────────── */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
   }
 
-  if (q.type === 'written') {
-    return (
-      <div className="cp-answer-row">
-        <div className="cp-tag tag-wr">
-          술<em>{num}</em>
-        </div>
-        <textarea
-          className="cp-textarea cp-answer-text"
-          value={q.answer}
-          placeholder="예시 정답 / 채점 기준"
-          onChange={(e) => onUpdate(q.id, { answer: e.target.value })}
-          rows={2}
-        />
-      </div>
-    );
+  html,
+  body,
+  #root {
+    overflow: visible !important;
+    height: auto !important;
+    background: white !important;
   }
 
-  // OX
-  return (
-    <div className="cp-answer-row cp-answer-row-ox">
-      <div className="cp-tag tag-ox">
-        OX<em>{num}</em>
-      </div>
-      <div className="cp-ox-answer-list">
-        {q.oxSentences.length === 0 ? (
-          <div className="cp-ox-empty">02번 섹션에서 OX 문장을 먼저 추가하세요.</div>
-        ) : (
-          q.oxSentences.map((s, i) => (
-            <div key={s.id} className="cp-ox-answer-row">
-              <span className="cp-ox-answer-num">({i + 1})</span>
-              <div className="cp-ox-answer-toggle">
-                <button
-                  className={`cp-ox-toggle-btn ${s.answer === 'O' ? 'active-o' : ''}`}
-                  onClick={() =>
-                    onUpdate(q.id, {
-                      oxSentences: q.oxSentences.map((ox, idx) =>
-                        idx === i ? { ...ox, answer: 'O' } : ox
-                      ),
-                    })
-                  }
-                >
-                  O
-                </button>
-                <button
-                  className={`cp-ox-toggle-btn ${s.answer === 'X' ? 'active-x' : ''}`}
-                  onClick={() =>
-                    onUpdate(q.id, {
-                      oxSentences: q.oxSentences.map((ox, idx) =>
-                        idx === i ? { ...ox, answer: 'X' } : ox
-                      ),
-                    })
-                  }
-                >
-                  X
-                </button>
-              </div>
-              {s.answer === 'X' && (
-                <input
-                  className="cp-input cp-ox-explanation"
-                  value={s.explanation}
-                  placeholder="X 해설 (간단히)"
-                  onChange={(e) =>
-                    onUpdate(q.id, {
-                      oxSentences: q.oxSentences.map((ox, idx) =>
-                        idx === i ? { ...ox, explanation: e.target.value } : ox
-                      ),
-                    })
-                  }
-                />
-              )}
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
-function Chevron({ open }: { open: boolean }) {
-  return (
-    <span className={`cp-chevron ${open ? 'open' : ''}`}>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-        <path
-          d="M6 9l6 6 6-6"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </span>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <div className="cp-field">
-      <label>{label}</label>
-      <input
-        className="cp-input"
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
-  );
-}
-
-// 위지윅 HTML을 안전하게 미리보기로 표시
-function RichTextDisplay({ html }: { html: string }) {
-  const safe = sanitizeRichHtml(html);
-  return <span dangerouslySetInnerHTML={{ __html: safe }} />;
-}
-
-// ═══════════════════════════════════════════════════════
-//  EXAM PAPER
-// ═══════════════════════════════════════════════════════
-function useDisplayScale(stageRef: React.RefObject<HTMLDivElement | null>) {
-  const [scale, setScale] = useState(1);
-  useEffect(() => {
-    const calc = () => {
-      const el = stageRef.current;
-      if (!el) return;
-      const available = el.clientWidth - 80;
-      if (available <= 0) return;
-      setScale(Math.min(1.05, available / PAPER_W_PX));
-    };
-    calc();
-    const ro = new ResizeObserver(calc);
-    if (stageRef.current) ro.observe(stageRef.current);
-    window.addEventListener('resize', calc);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', calc);
-    };
-  }, [stageRef]);
-  return scale;
-}
-
-type BlockKind =
-  | 'group-header'    // 공통 발문 (단독 또는 공통 본문 포함)
-  | 'group-passage'   // 공통 본문 (group-header에 합쳐서 한 덩어리)
-  | 'q-stem'          // 발문 + 본문(있으면) = 한 묶음으로 처리
-  | 'q-passage'       // 개별 본문
-  | 'q-conditions'    // 영작 조건 박스
-  | 'q-choice'        // 객관식 선지 1개
-  | 'q-answer'        // 서술형 답란
-  | 'q-ox';           // OX 전체 (한 덩어리)
-
-interface Block {
-  id: string;
-  groupId: string; // 같은 question id 단위로 묶임 (공통그룹은 그룹id로 묶임)
-  kind: BlockKind;
-  pullPriority: number; // 0 = 항상 자유, 높을수록 같은 그룹의 다음 블록과 묶이는 우선순위 높음
-  render: () => React.ReactNode;
-}
-
-interface CommonGroupCtx {
-  groupId: string;
-  range: [number, number];
-}
-
-function buildBlocks(
-  questions: Question[],
-  groups: CommonGroup[]
-): { blocks: Block[]; numberMap: Map<string, number> } {
-  const blocks: Block[] = [];
-  const numberMap = new Map<string, number>();
-  questions.forEach((q, i) => numberMap.set(q.id, i + 1));
-
-  // 그룹 블록 정보 (연속된 같은 그룹 처리)
-  let cursor = 0;
-  while (cursor < questions.length) {
-    const q = questions[cursor];
-
-    // 공통 그룹이 시작되는 시점 체크
-    if (q.groupId) {
-      const groupId = q.groupId;
-      const group = groups.find((g) => g.id === groupId);
-
-      // 같은 그룹의 연속 문제 찾기
-      let end = cursor;
-      while (end + 1 < questions.length && questions[end + 1].groupId === groupId) {
-        end++;
-      }
-
-      const startNum = cursor + 1;
-      const endNum = end + 1;
-
-      if (group) {
-        // 공통 발문 + (공통 본문) 을 한 묶음 블록으로 추가
-        blocks.push({
-          id: `${groupId}-header`,
-          groupId: `gr-${groupId}`,
-          kind: 'group-header',
-          pullPriority: 0,
-          render: () => (
-            <CommonGroupHeader
-              group={group}
-              startNum={startNum}
-              endNum={endNum}
-            />
-          ),
-        });
-      }
-
-      // 그룹 내 각 문제 블록 추가
-      for (let i = cursor; i <= end; i++) {
-        const qq = questions[i];
-        pushQuestionBlocks(blocks, qq, numberMap.get(qq.id)!, true);
-      }
-
-      cursor = end + 1;
-    } else {
-      pushQuestionBlocks(blocks, q, numberMap.get(q.id)!, false);
-      cursor++;
-    }
+  .app-shell {
+    display: block !important;
+    height: auto !important;
+    background: white !important;
   }
 
-  return { blocks, numberMap };
-}
-
-function pushQuestionBlocks(
-  blocks: Block[],
-  q: Question,
-  num: number,
-  inGroup: boolean
-) {
-  // 발문 (+ 개별 본문은 별개 블록이지만 stem과 묶음 우선순위 부여)
-  blocks.push({
-    id: `${q.id}-stem`,
-    groupId: q.id,
-    kind: 'q-stem',
-    pullPriority: 10,
-    render: () => <QuestionStem q={q} number={num} inGroup={inGroup} />,
-  });
-
-  if (q.hasPassage && !isPlainTextEmpty(q.passage)) {
-    blocks.push({
-      id: `${q.id}-passage`,
-      groupId: q.id,
-      kind: 'q-passage',
-      pullPriority: 10, // 발문이랑 같이 묶임
-      render: () => <PassageView html={q.passage} />,
-    });
+  .control-panel,
+  .paper-stage-bar {
+    display: none !important;
   }
 
-  if (q.type === 'written') {
-    if (q.conditions.length > 0) {
-      blocks.push({
-        id: `${q.id}-cond`,
-        groupId: q.id,
-        kind: 'q-conditions',
-        pullPriority: 10, // 답란이랑 같이
-        render: () => <ConditionsView conditions={q.conditions} />,
-      });
-    }
-    blocks.push({
-      id: `${q.id}-ans`,
-      groupId: q.id,
-      kind: 'q-answer',
-      pullPriority: 10,
-      render: () => <AnswerArea lines={q.answerLines} />,
-    });
-  } else if (q.type === 'multiple-choice') {
-    q.choices.forEach((c, i) => {
-      // 첫 2개 선지는 발문/본문과 묶음 (priority 10), 나머지는 자유 (priority 0)
-      blocks.push({
-        id: `${q.id}-c${i}`,
-        groupId: q.id,
-        kind: 'q-choice',
-        pullPriority: i < 2 ? 10 : 0,
-        render: () => <ChoiceItem choice={c} index={i} />,
-      });
-    });
-  } else if (q.type === 'ox') {
-    // OX는 통째로 한 덩어리
-    blocks.push({
-      id: `${q.id}-ox`,
-      groupId: q.id,
-      kind: 'q-ox',
-      pullPriority: 10,
-      render: () => <OxBlock sentences={q.oxSentences} />,
-    });
+  .paper-stage {
+    background: white !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .paper-stack {
+    padding: 0 !important;
+    gap: 0 !important;
+    background: white !important;
+  }
+
+  .paper-frame {
+    width: 210mm !important;
+    height: 297mm !important;
+    page-break-after: always;
+    break-after: page;
+    box-shadow: none !important;
+  }
+
+  .paper-frame:last-child {
+    page-break-after: auto;
+  }
+
+  .paper {
+    transform: none !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    box-shadow: none !important;
   }
 }
 
-interface PageData {
-  cols: [Block[], Block[]];
-}
-
-function paginate(
-  blocks: Block[],
-  heights: Record<string, number>,
-  firstPageHeaderH: number,
-  miniHeaderH: number
-): PageData[] {
-  const pages: PageData[] = [];
-  let current: PageData = { cols: [[], []] };
-  let pageIdx = 0;
-  let colIdx: 0 | 1 = 0;
-  let used = 0;
-  let lastGroupId: string | null = null;
-
-  const headerForPage = (p: number) =>
-    p === 0 ? firstPageHeaderH : miniHeaderH;
-
-  const available = (): number =>
-    COL_FULL_H_PX - headerForPage(pageIdx) - FOOTER_PX - SAFETY_MARGIN_PX;
-
-  const startNextPage = () => {
-    pages.push(current);
-    current = { cols: [[], []] };
-    pageIdx++;
-    colIdx = 0;
-    used = 0;
-    lastGroupId = null;
-  };
-
-  // 같은 group의 "묶음 블록"만 회수 (pullPriority가 높은 것들)
-  // 발문/본문/조건/첫 선지 2개 등을 같이 다음 컬럼/페이지로 이동
-  const pullSameGroupHighPriority = (groupId: string): Block[] => {
-    const pulled: Block[] = [];
-
-    const pullFromCol = (col: Block[]) => {
-      while (col.length > 0) {
-        const last = col[col.length - 1];
-        if (last.groupId === groupId && last.pullPriority >= 10) {
-          pulled.unshift(col.pop()!);
-        } else {
-          break;
-        }
-      }
-    };
-
-    pullFromCol(current.cols[1]);
-    if (colIdx === 1) {
-      // 컬럼0의 끝부분에서도 같은 groupId가 있다면 회수 (좌→우로 이어진 묶음)
-      // 단, 회수 후 컬럼0이 비지 않도록 한다
-      const col0 = current.cols[0];
-      while (col0.length > 0) {
-        const last = col0[col0.length - 1];
-        if (last.groupId === groupId && last.pullPriority >= 10) {
-          pulled.unshift(col0.pop()!);
-        } else {
-          break;
-        }
-      }
-    }
-
-    return pulled;
-  };
-
-  const place = (block: Block, allowPull: boolean): void => {
-    const h = heights[block.id] ?? 0;
-    const isContinuation = lastGroupId === block.groupId;
-    const gap = used === 0 ? 0 : isContinuation ? BLOCK_GAP_PX : GROUP_GAP_PX;
-    const proposed = used + gap + h;
-
-    if (used === 0 || proposed <= available()) {
-      current.cols[colIdx].push(block);
-      used = used === 0 ? h : proposed;
-      lastGroupId = block.groupId;
-      return;
-    }
-
-    // 안 들어감 - 다음 컬럼으로 이동
-    if (colIdx === 0) {
-      colIdx = 1;
-      used = 0;
-      lastGroupId = null;
-      place(block, allowPull);
-      return;
-    }
-
-    // 우측 컬럼도 꽉 참 - 다음 페이지로 이동
-    if (allowPull && isContinuation && block.pullPriority >= 10) {
-      // 같은 그룹의 묶음 블록들을 같이 다음 페이지로
-      const pulled = pullSameGroupHighPriority(block.groupId);
-
-      startNextPage();
-
-      for (const pb of [...pulled, block]) {
-        place(pb, false);
-      }
-      return;
-    }
-
-    startNextPage();
-    place(block, allowPull);
-  };
-
-  for (const block of blocks) {
-    place(block, true);
+@media (max-width: 1100px) {
+  .app-shell {
+    grid-template-columns: 400px 1fr;
   }
-
-  pages.push(current);
-  return pages;
 }
 
-function ExamPaper({
-  header,
-  questions,
-  groups,
-}: {
-  header: ExamHeader;
-  questions: Question[];
-  groups: CommonGroup[];
-}) {
-  const stageRef = useRef<HTMLDivElement>(null);
-  const measureRef = useRef<HTMLDivElement>(null);
-  const scale = useDisplayScale(stageRef);
-  const { blocks, numberMap } = useMemo(
-    () => buildBlocks(questions, groups),
-    [questions, groups]
-  );
-
-  const [heights, setHeights] = useState<Record<string, number>>({});
-  const [headerHeight, setHeaderHeight] = useState(160);
-  const [miniHeaderHeight, setMiniHeaderHeight] = useState(40);
-
-  useLayoutEffect(() => {
-    const node = measureRef.current;
-    if (!node) return;
-
-    let raf = 0;
-    const measure = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const next: Record<string, number> = {};
-        node.querySelectorAll<HTMLElement>('[data-mid]').forEach((el) => {
-          next[el.dataset.mid!] = el.getBoundingClientRect().height;
-        });
-
-        setHeights((prev) => {
-          const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
-          for (const k of keys) {
-            if (Math.abs((prev[k] ?? 0) - (next[k] ?? 0)) > 0.5) {
-              return next;
-            }
-          }
-          return prev;
-        });
-
-        const head = node.querySelector<HTMLElement>('[data-mhead]');
-        if (head) {
-          const hh = head.getBoundingClientRect().height;
-          setHeaderHeight((prev) => (Math.abs(prev - hh) > 0.5 ? hh : prev));
-        }
-
-        const miniHead = node.querySelector<HTMLElement>('[data-mhead-mini]');
-        if (miniHead) {
-          const mh = miniHead.getBoundingClientRect().height;
-          setMiniHeaderHeight((prev) =>
-            Math.abs(prev - mh) > 0.5 ? mh : prev
-          );
-        }
-      });
-    };
-
-    measure();
-
-    const ro = new ResizeObserver(measure);
-    node
-      .querySelectorAll<HTMLElement>('[data-mid]')
-      .forEach((el) => ro.observe(el));
-    const head = node.querySelector<HTMLElement>('[data-mhead]');
-    if (head) ro.observe(head);
-    const miniHead = node.querySelector<HTMLElement>('[data-mhead-mini]');
-    if (miniHead) ro.observe(miniHead);
-
-    if (typeof document !== 'undefined' && 'fonts' in document) {
-      document.fonts.ready.then(() => measure());
-    }
-
-    node.querySelectorAll('img').forEach((img) => {
-      if (!img.complete) {
-        img.addEventListener('load', measure, { once: true });
-        img.addEventListener('error', measure, { once: true });
-      }
-    });
-
-    return () => {
-      ro.disconnect();
-      cancelAnimationFrame(raf);
-    };
-  }, [blocks, header]);
-
-  const examPages = useMemo(
-    () => paginate(blocks, heights, headerHeight, miniHeaderHeight),
-    [blocks, heights, headerHeight, miniHeaderHeight]
-  );
-
-  const hasAnyAnswer = useMemo(() => {
-    return questions.some((q) => {
-      if (q.type === 'multiple-choice' || q.type === 'written') {
-        return q.answer.trim() !== '';
-      }
-      if (q.type === 'ox') {
-        return q.oxSentences.some((s) => s.answer === 'O' || s.answer === 'X');
-      }
-      return false;
-    });
-  }, [questions]);
-
-  const totalPages = examPages.length + (hasAnyAnswer ? 1 : 0);
-
-  return (
-    <main className="paper-stage" ref={stageRef}>
-      <div className="paper-stage-bar">
-        <div className="paper-stage-bar-left">
-          <span className="paper-stage-label">A4 · 210 × 297 mm</span>
-          <span className="paper-stage-pages">
-            총 <strong>{totalPages}</strong>페이지
-          </span>
-        </div>
-        <button
-          className="paper-print-btn"
-          onClick={() => window.print()}
-          title="인쇄 / PDF 저장 (Ctrl+P)"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          인쇄 / PDF 저장
-        </button>
-      </div>
-
-      <div className="measure-layer" aria-hidden="true" ref={measureRef}>
-        <div data-mhead style={{ width: PAPER_W_PX - PAD_X_MM * 2 * MM_TO_PX }}>
-          <PaperHeader header={header} />
-        </div>
-        <div
-          data-mhead-mini
-          style={{ width: PAPER_W_PX - PAD_X_MM * 2 * MM_TO_PX }}
-        >
-          <PaperHeaderMini header={header} />
-        </div>
-        <div className="measure-col" style={{ width: COL_W_PX }}>
-          {blocks.map((b) => (
-            <div data-mid={b.id} key={b.id} className="measure-item">
-              {b.render()}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="paper-stack">
-        {examPages.map((page, i) => (
-          <PaperPage
-            key={i}
-            page={page}
-            pageIndex={i}
-            totalPages={totalPages}
-            header={header}
-            scale={scale}
-          />
-        ))}
-        {hasAnyAnswer && (
-          <AnswerKeyPage
-            header={header}
-            questions={questions}
-            numberMap={numberMap}
-            pageIndex={examPages.length}
-            totalPages={totalPages}
-            scale={scale}
-          />
-        )}
-      </div>
-    </main>
-  );
-}
-
-function PaperPage({
-  page,
-  pageIndex,
-  totalPages,
-  header,
-  scale,
-}: {
-  page: PageData;
-  pageIndex: number;
-  totalPages: number;
-  header: ExamHeader;
-  scale: number;
-}) {
-  const isFirst = pageIndex === 0;
-  return (
-    <div
-      className="paper-frame"
-      style={{ width: PAPER_W_PX * scale, height: PAPER_H_PX * scale }}
-    >
-      <div className="paper" style={{ transform: `scale(${scale})` }}>
-        <span className="corner tl" />
-        <span className="corner tr" />
-        <span className="corner bl" />
-        <span className="corner br" />
-
-        <div className="paper-inner">
-          {isFirst ? (
-            <PaperHeader header={header} />
-          ) : (
-            <PaperHeaderMini header={header} />
-          )}
-
-          <div className="paper-columns">
-            <Column blocks={page.cols[0]} />
-            <div className="paper-divider" />
-            <Column blocks={page.cols[1]} />
-          </div>
-
-          <footer className="paper-footer">
-            <span className="paper-footer-academy">{header.academyName}</span>
-            <span className="paper-footer-pageno">
-              {pageIndex + 1} / {totalPages}
-            </span>
-          </footer>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Column({ blocks }: { blocks: Block[] }) {
-  // 같은 groupId의 연속 블록을 article로 묶음
-  const groups: { groupId: string; items: Block[] }[] = [];
-  for (const b of blocks) {
-    const last = groups[groups.length - 1];
-    if (last && last.groupId === b.groupId) {
-      last.items.push(b);
-    } else {
-      groups.push({ groupId: b.groupId, items: [b] });
-    }
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    height: auto;
+    overflow: auto;
   }
-
-  return (
-    <div className="paper-col">
-      {groups.map((g, i) => {
-        const isGroupHeader = g.groupId.startsWith('gr-');
-        return (
-          <article
-            className={`q ${isGroupHeader ? 'q-group-header' : ''}`}
-            key={i}
-          >
-            {g.items.map((b, j) => (
-              <Fragment key={j}>{b.render()}</Fragment>
-            ))}
-          </article>
-        );
-      })}
-    </div>
-  );
-}
-
-function PaperHeader({ header }: { header: ExamHeader }) {
-  const hasLogo = !!header.logoDataUrl;
-  return (
-    <header className="paper-header">
-      <div className="paper-header-main">
-        <div className={`paper-header-logo ${hasLogo ? 'has-image' : ''}`}>
-          {hasLogo ? (
-            <img src={header.logoDataUrl} alt="logo" />
-          ) : (
-            <span>{header.academyName?.[0] ?? 'A'}</span>
-          )}
-        </div>
-        <div className="paper-header-text">
-          <div className="paper-header-meta">
-            <span>{header.academyName}</span>
-            {header.grade && (
-              <>
-                <span className="paper-header-dot">·</span>
-                <span>{header.grade}</span>
-              </>
-            )}
-          </div>
-          {header.title && (
-            <h1 className="paper-header-title">{header.title}</h1>
-          )}
-        </div>
-        <div className="paper-header-name">
-          <label>이름</label>
-          <span />
-        </div>
-      </div>
-
-      {header.scope && (
-        <div className="paper-header-scope">
-          <span className="paper-header-scope-label">범위</span>
-          <span className="paper-header-scope-text">{header.scope}</span>
-        </div>
-      )}
-    </header>
-  );
-}
-
-function PaperHeaderMini({ header }: { header: ExamHeader }) {
-  const hasLogo = !!header.logoDataUrl;
-  return (
-    <header className="paper-header-mini">
-      {hasLogo ? (
-        <img
-          src={header.logoDataUrl}
-          alt=""
-          className="paper-header-mini-logo"
-        />
-      ) : (
-        <span className="paper-header-mini-mark">
-          {header.academyName?.[0] ?? 'A'}
-        </span>
-      )}
-      <div className="paper-header-mini-text">
-        {header.academyName && (
-          <span className="paper-header-mini-academy">
-            {header.academyName}
-          </span>
-        )}
-        {header.title && (
-          <>
-            {header.academyName && (
-              <span className="paper-header-mini-dot">·</span>
-            )}
-            <span className="paper-header-mini-title">{header.title}</span>
-          </>
-        )}
-      </div>
-      {header.scope && (
-        <span className="paper-header-mini-scope">
-          <strong>범위</strong>
-          {header.scope}
-        </span>
-      )}
-    </header>
-  );
-}
-
-// ─────────── 블록 컴포넌트 ───────────
-function CommonGroupHeader({
-  group,
-  startNum,
-  endNum,
-}: {
-  group: CommonGroup;
-  startNum: number;
-  endNum: number;
-}) {
-  return (
-    <div className="q-common-group">
-      <div className="q-common-head">
-        <span className="q-common-range">
-          [{startNum}~{endNum}]
-        </span>
-        <p
-          className="q-common-text"
-          dangerouslySetInnerHTML={{
-            __html: sanitizeRichHtml(group.commonQuestionText),
-          }}
-        />
-      </div>
-      {group.hasCommonPassage && !isPlainTextEmpty(group.commonPassage) && (
-        <PassageView html={group.commonPassage} />
-      )}
-    </div>
-  );
-}
-
-function QuestionStem({
-  q,
-  number,
-  inGroup,
-}: {
-  q: Question;
-  number: number;
-  inGroup: boolean;
-}) {
-  const isEmpty = isPlainTextEmpty(q.questionText);
-  return (
-    <header className={`q-head ${inGroup ? 'q-head-in-group' : ''}`}>
-      <span className="q-num">{number}.</span>
-      {isEmpty ? (
-        <p className="q-text q-text-empty">(문제를 입력하세요)</p>
-      ) : (
-        <p
-          className="q-text"
-          dangerouslySetInnerHTML={{
-            __html: sanitizeRichHtml(q.questionText),
-          }}
-        />
-      )}
-    </header>
-  );
-}
-
-function PassageView({ html }: { html: string }) {
-  return (
-    <div
-      className="q-passage"
-      dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(html) }}
-    />
-  );
-}
-
-function ConditionsView({ conditions }: { conditions: string[] }) {
-  if (conditions.length === 0) return null;
-  return (
-    <div className="q-conditions">
-      <span className="q-conditions-label">조건</span>
-      <ol className="q-conditions-list">
-        {conditions.map((c, i) => (
-          <li key={i}>{c}</li>
-        ))}
-      </ol>
-    </div>
-  );
-}
-
-function ChoiceItem({ choice, index }: { choice: string; index: number }) {
-  return (
-    <div className="q-choice-item">
-      <span className="q-choice-mark">
-        {['①', '②', '③', '④', '⑤'][index]}
-      </span>
-      <span className="q-choice-text">{choice || ' '}</span>
-    </div>
-  );
-}
-
-function AnswerArea({ lines }: { lines: number }) {
-  return (
-    <div className="q-answer">
-      <div className="q-answer-label">답</div>
-      <div className="q-answer-lines">
-        {Array.from({ length: lines }).map((_, i) => (
-          <div key={i} className="q-answer-line" />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function OxBlock({ sentences }: { sentences: OxSentence[] }) {
-  if (sentences.length === 0) {
-    return (
-      <div className="q-ox-empty">(OX 문장이 없습니다)</div>
-    );
+  body {
+    overflow: auto;
   }
-  return (
-    <ol className="q-ox-list">
-      {sentences.map((s, i) => (
-        <li key={s.id} className="q-ox-item">
-          <span className="q-ox-num">({i + 1})</span>
-          <span className="q-ox-text">{s.text}</span>
-          <span className="q-ox-dots" aria-hidden="true" />
-          <span className="q-ox-box">(&nbsp;&nbsp;&nbsp;&nbsp;)</span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-// ═══════════════════════════════════════════════════════
-//  ANSWER KEY PAGE (2단 구성, 통합 번호 + 유형별 답)
-// ═══════════════════════════════════════════════════════
-function AnswerKeyPage({
-  header,
-  questions,
-  numberMap,
-  pageIndex,
-  totalPages,
-  scale,
-}: {
-  header: ExamHeader;
-  questions: Question[];
-  numberMap: Map<string, number>;
-  pageIndex: number;
-  totalPages: number;
-  scale: number;
-}) {
-  return (
-    <div
-      className="paper-frame"
-      style={{ width: PAPER_W_PX * scale, height: PAPER_H_PX * scale }}
-    >
-      <div className="paper" style={{ transform: `scale(${scale})` }}>
-        <span className="corner tl" />
-        <span className="corner tr" />
-        <span className="corner bl" />
-        <span className="corner br" />
-
-        <div className="paper-inner">
-          <header className="answer-header">
-            <div className="answer-header-text">
-              <div className="answer-header-tag">ANSWER KEY</div>
-              <h1 className="answer-header-title">정답 및 해설</h1>
-            </div>
-            <div className="answer-header-meta">
-              <span>{header.academyName}</span>
-              {header.title && <span>{header.title}</span>}
-            </div>
-          </header>
-
-          <div className="answer-body-2col">
-            {questions.map((q) => {
-              const num = numberMap.get(q.id)!;
-              return <AnswerItem key={q.id} q={q} num={num} />;
-            })}
-          </div>
-
-          <footer className="paper-footer">
-            <span className="paper-footer-academy">{header.academyName}</span>
-            <span className="paper-footer-pageno">
-              {pageIndex + 1} / {totalPages}
-            </span>
-          </footer>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AnswerItem({ q, num }: { q: Question; num: number }) {
-  if (q.type === 'multiple-choice') {
-    return (
-      <div className="answer-item">
-        <span className="answer-item-num">{num}.</span>
-        <span className="answer-item-body">
-          <span className="answer-item-value">{q.answer || '—'}</span>
-        </span>
-      </div>
-    );
+  .control-panel {
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
   }
-
-  if (q.type === 'written') {
-    return (
-      <div className="answer-item">
-        <span className="answer-item-num">{num}.</span>
-        <span className="answer-item-body">
-          <span className="answer-item-value answer-item-text">
-            {q.answer || <i>(정답 미입력)</i>}
-          </span>
-        </span>
-      </div>
-    );
+  .paper-stage {
+    height: auto;
   }
-
-  // OX
-  return (
-    <div className="answer-item answer-item-ox">
-      <span className="answer-item-num">{num}.</span>
-      <span className="answer-item-body">
-        <div className="answer-ox-grid">
-          {q.oxSentences.map((s, i) => (
-            <div key={s.id} className="answer-ox-row">
-              <span className="answer-ox-num">({i + 1})</span>
-              <span
-                className={`answer-ox-mark ${
-                  s.answer === 'O' ? 'is-o' : s.answer === 'X' ? 'is-x' : ''
-                }`}
-              >
-                {s.answer || '—'}
-              </span>
-              {s.answer === 'X' && s.explanation && (
-                <span className="answer-ox-explanation">→ {s.explanation}</span>
-              )}
-            </div>
-          ))}
-        </div>
-      </span>
-    </div>
-  );
 }
