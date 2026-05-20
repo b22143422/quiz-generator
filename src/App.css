@@ -1689,6 +1689,42 @@ textarea {
   background: rgba(229, 115, 115, 0.1);
 }
 
+.cp-library-backup {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.cp-library-backup-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.cp-library-backup-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.cp-library-backup-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .cp-library-note {
   display: flex;
   align-items: flex-start;
