@@ -1,6 +1,5 @@
 import {
   Fragment,
-  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -87,8 +86,6 @@ const GROUP_GAP_PX = 6 * MM_TO_PX;
 
 const FOOTER_PX = 8 * MM_TO_PX;
 const SAFETY_MARGIN_PX = 4 * MM_TO_PX;
-
-const MC_PER_ROW = 10;
 
 // ═══════════════════════════════════════════════════════
 //  LIBRARY (localStorage)
@@ -390,21 +387,18 @@ function RichTextEditor({
   minHeight = 84,
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const lastHtmlRef = useRef<string>(value);
   const [, force] = useState(0);
 
   // 외부에서 value 바뀌면(다른 문제 선택 등) 에디터에 반영
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
       editorRef.current.innerHTML = value || '';
-      lastHtmlRef.current = value;
     }
   }, [value]);
 
   const handleInput = () => {
     if (!editorRef.current) return;
     const html = sanitizeRichHtml(editorRef.current.innerHTML);
-    lastHtmlRef.current = html;
     onChange(html);
     force((n) => n + 1);
   };
@@ -1162,7 +1156,6 @@ function ControlPanel({
                 onDelete={onDelete}
                 onMove={onMove}
                 onEditGroup={(gid) => setEditingGroupId(gid)}
-                onUngroup={onUngroup}
               />
             )}
           </>
@@ -1537,7 +1530,6 @@ function QuestionList({
   onDelete,
   onMove,
   onEditGroup,
-  onUngroup,
 }: {
   questions: Question[];
   groups: CommonGroup[];
@@ -1549,7 +1541,6 @@ function QuestionList({
   onDelete: (id: string) => void;
   onMove: (id: string, dir: -1 | 1) => void;
   onEditGroup: (gid: string) => void;
-  onUngroup: (gid: string) => void;
 }) {
   // 연속된 같은 그룹끼리 묶어 렌더링
   const blocks: Array<
@@ -1656,7 +1647,7 @@ function QuestionList({
 
   return (
     <ul className="cp-list">
-      {blocks.map((b, bi) => {
+      {blocks.map((b) => {
         if (b.kind === 'single') {
           return <Fragment key={`s-${b.q.id}`}>{renderItem(b.q, b.index)}</Fragment>;
         }
@@ -1897,11 +1888,6 @@ interface Block {
   kind: BlockKind;
   pullPriority: number; // 0 = 항상 자유, 높을수록 같은 그룹의 다음 블록과 묶이는 우선순위 높음
   render: () => React.ReactNode;
-}
-
-interface CommonGroupCtx {
-  groupId: string;
-  range: [number, number];
 }
 
 function buildBlocks(
