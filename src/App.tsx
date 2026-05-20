@@ -91,6 +91,7 @@ const SAFETY_MARGIN_PX = 4 * MM_TO_PX;
 //  LIBRARY (localStorage)
 // ═══════════════════════════════════════════════════════
 const LIBRARY_KEY = 'exam-studio.library.v2';
+const LIBRARY_KEY_V1 = 'exam-studio.library.v1';
 
 function normalizeQuestion(q: any): Question {
   const type: QuestionType =
@@ -129,10 +130,9 @@ function normalizeGroup(g: any): CommonGroup {
   };
 }
 
-function loadLibrary(): SavedPaper[] {
+function parsePapers(raw: string | null): SavedPaper[] {
+  if (!raw) return [];
   try {
-    const raw = localStorage.getItem(LIBRARY_KEY);
-    if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed
@@ -152,12 +152,82 @@ function loadLibrary(): SavedPaper[] {
   }
 }
 
+function loadLibrary(): SavedPaper[] {
+  // v2 데이터 로드
+  const v2 = parsePapers(localStorage.getItem(LIBRARY_KEY));
+
+  // v1 데이터가 남아있으면 마이그레이션
+  try {
+    const v1Raw = localStorage.getItem(LIBRARY_KEY_V1);
+    if (v1Raw) {
+      const v1Papers = parsePapers(v1Raw);
+      if (v1Papers.length > 0) {
+        // v2에 이미 같은 id가 있으면 중복 방지
+        const existingIds = new Set(v2.map((p) => p.id));
+        const toMigrate = v1Papers.filter((p) => !existingIds.has(p.id));
+        if (toMigrate.length > 0) {
+          const merged = [...v2, ...toMigrate];
+          localStorage.setItem(LIBRARY_KEY, JSON.stringify(merged));
+          console.log(
+            `라이브러리 마이그레이션 완료: ${toMigrate.length}개 시험지를 v1 → v2로 이관`
+          );
+          return merged;
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Library v1 migration failed:', e);
+  }
+
+  return v2;
+}
+
 function persistLibrary(papers: SavedPaper[]) {
   try {
     localStorage.setItem(LIBRARY_KEY, JSON.stringify(papers));
   } catch (e) {
     console.error('Failed to persist library:', e);
   }
+}
+
+// ─── JSON 파일 내보내기 / 불러오기 (백업 & 컴퓨터 간 이동) ───
+function exportLibraryAsJson(papers: SavedPaper[]) {
+  const payload = {
+    type: 'exam-studio-library',
+    version: 2,
+    exportedAt: Date.now(),
+    papers,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: 'application/json',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date();
+  const dateStr = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+  a.href = url;
+  a.download = `exam-studio-backup-${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function parseImportedFile(text: string): SavedPaper[] {
+  try {
+    const parsed = JSON.parse(text);
+    // 백업 파일 형식
+    if (parsed?.type === 'exam-studio-library' && Array.isArray(parsed.papers)) {
+      return parsePapers(JSON.stringify(parsed.papers));
+    }
+    // 또는 그냥 배열 형식
+    if (Array.isArray(parsed)) {
+      return parsePapers(text);
+    }
+  } catch {
+    // ignore
+  }
+  return [];
 }
 
 function formatRelDate(ts: number): string {
@@ -343,6 +413,53 @@ export default function App() {
     setEditingId(null);
   };
 
+  // 라이브러리 백업 파일로 내보내기
+  const exportLibrary = () => {
+    if (library.length === 0) {
+      alert('내보낼 시험지가 없습니다.');
+      return;
+    }
+    exportLibraryAsJson(library);
+  };
+
+  // 라이브러리 백업 파일에서 불러오기
+  const importLibrary = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result as string;
+      const imported = parseImportedFile(text);
+      if (imported.length === 0) {
+        alert('파일에서 시험지를 찾을 수 없습니다. 올바른 백업 파일인지 확인하세요.');
+        return;
+      }
+      // 기존 라이브러리와 병합 (중복 id는 새 데이터로 덮어쓰기 옵션 묻기)
+      const existingIds = new Set(library.map((p) => p.id));
+      const newOnes = imported.filter((p) => !existingIds.has(p.id));
+      const duplicates = imported.filter((p) => existingIds.has(p.id));
+
+      let merged = [...library, ...newOnes];
+
+      if (duplicates.length > 0) {
+        const ok = confirm(
+          `${imported.length}개 시험지 중 ${duplicates.length}개가 라이브러리에 이미 존재합니다.\n\n[확인]: 새 파일로 덮어쓰기\n[취소]: 새 항목만 추가 (중복은 무시)`
+        );
+        if (ok) {
+          // 중복은 새 파일 것으로 교체
+          merged = library.map((p) => {
+            const dup = duplicates.find((d) => d.id === p.id);
+            return dup ?? p;
+          });
+          merged = [...merged, ...newOnes];
+        }
+      }
+
+      setLibrary(merged);
+      persistLibrary(merged);
+      alert(`불러오기 완료: ${newOnes.length}개 새 시험지 추가됨` + (duplicates.length > 0 ? `, ${duplicates.length}개 중복 처리됨` : ''));
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="app-shell">
       <ControlPanel
@@ -364,6 +481,8 @@ export default function App() {
         onLoadPaper={loadPaper}
         onDeletePaper={deletePaper}
         onNewBlank={newBlankPaper}
+        onExportLibrary={exportLibrary}
+        onImportLibrary={importLibrary}
       />
       <ExamPaper header={header} questions={questions} groups={groups} />
     </div>
@@ -482,6 +601,8 @@ interface ControlPanelProps {
   onLoadPaper: (id: string) => void;
   onDeletePaper: (id: string) => void;
   onNewBlank: () => void;
+  onExportLibrary: () => void;
+  onImportLibrary: (file: File) => void;
 }
 
 interface ComposerState {
@@ -527,6 +648,8 @@ function ControlPanel({
   onLoadPaper,
   onDeletePaper,
   onNewBlank,
+  onExportLibrary,
+  onImportLibrary,
 }: ControlPanelProps) {
   const [composer, setComposer] = useState<ComposerState>(blankComposer);
   const [listExpanded, setListExpanded] = useState(false);
@@ -1270,6 +1393,51 @@ function ControlPanel({
               </ul>
             )}
 
+            <div className="cp-library-backup">
+              <button
+                className="cp-library-backup-btn"
+                onClick={onExportLibrary}
+                disabled={library.length === 0}
+                title="라이브러리 전체를 백업 파일로 다운로드"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                백업 파일 내보내기
+              </button>
+              <label
+                className="cp-library-backup-btn"
+                title="백업 파일에서 시험지 불러오기"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                백업 파일 불러오기
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  hidden
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) onImportLibrary(f);
+                    e.target.value = ''; // 같은 파일 다시 선택 가능하게
+                  }}
+                />
+              </label>
+            </div>
+
             <div className="cp-library-note">
               <svg
                 width="11"
@@ -1292,8 +1460,7 @@ function ControlPanel({
                   strokeLinecap="round"
                 />
               </svg>
-              브라우저에 저장됩니다. 브라우저 데이터를 지우면 라이브러리도 함께
-              사라질 수 있습니다.
+              라이브러리는 이 브라우저에만 저장됩니다. 다른 컴퓨터에서 쓰거나 안전한 백업을 원하면 <strong>백업 파일 내보내기</strong>로 JSON 파일을 저장해두세요.
             </div>
           </>
         )}
@@ -2233,7 +2400,126 @@ function ExamPaper({
     });
   }, [questions]);
 
-  const totalPages = examPages.length + (hasAnyAnswer ? 1 : 0);
+  // 답지 페이지네이션 (2단 구성, 항목별 높이 기반)
+  const [answerHeights, setAnswerHeights] = useState<Record<string, number>>(
+    {}
+  );
+  const [answerHeaderH, setAnswerHeaderH] = useState(60);
+  const answerMeasureRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!hasAnyAnswer) return;
+    const node = answerMeasureRef.current;
+    if (!node) return;
+
+    let raf = 0;
+    const measure = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const next: Record<string, number> = {};
+        node.querySelectorAll<HTMLElement>('[data-aid]').forEach((el) => {
+          next[el.dataset.aid!] = el.getBoundingClientRect().height;
+        });
+
+        setAnswerHeights((prev) => {
+          const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+          for (const k of keys) {
+            if (Math.abs((prev[k] ?? 0) - (next[k] ?? 0)) > 0.5) {
+              return next;
+            }
+          }
+          return prev;
+        });
+
+        const head = node.querySelector<HTMLElement>('[data-ahead]');
+        if (head) {
+          const hh = head.getBoundingClientRect().height;
+          setAnswerHeaderH((prev) => (Math.abs(prev - hh) > 0.5 ? hh : prev));
+        }
+      });
+    };
+
+    measure();
+
+    const ro = new ResizeObserver(measure);
+    node
+      .querySelectorAll<HTMLElement>('[data-aid]')
+      .forEach((el) => ro.observe(el));
+    const head = node.querySelector<HTMLElement>('[data-ahead]');
+    if (head) ro.observe(head);
+
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      document.fonts.ready.then(() => measure());
+    }
+
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [questions, hasAnyAnswer]);
+
+  // 답지 항목을 2단으로 나누어 페이지 단위로 묶기
+  const answerPages = useMemo<Question[][]>(() => {
+    if (!hasAnyAnswer) return [];
+
+    // 첫 페이지는 ANSWER KEY 헤더가 있어서 사용 가능 공간이 다름
+    const firstPageAvailH =
+      COL_FULL_H_PX - answerHeaderH - FOOTER_PX - SAFETY_MARGIN_PX;
+    const nextPageAvailH =
+      COL_FULL_H_PX - miniHeaderHeight - FOOTER_PX - SAFETY_MARGIN_PX;
+
+    // 2단이므로 한 페이지에 들어갈 수 있는 총 높이 = avail * 2 (각 컬럼 = avail)
+    const pages: Question[][] = [];
+    let current: Question[] = [];
+    let usedCol1 = 0;
+    let usedCol2 = 0;
+    let currentCol: 0 | 1 = 0;
+    let pageIdx = 0;
+
+    const availForPage = (p: number) =>
+      p === 0 ? firstPageAvailH : nextPageAvailH;
+
+    for (const q of questions) {
+      const h = answerHeights[`a-${q.id}`] ?? 60; // 미측정시 안전한 기본값
+      const avail = availForPage(pageIdx);
+
+      // 현재 컬럼에 들어가는지 체크
+      const target = currentCol === 0 ? usedCol1 : usedCol2;
+      if (target + h <= avail) {
+        current.push(q);
+        if (currentCol === 0) usedCol1 += h;
+        else usedCol2 += h;
+      } else if (currentCol === 0) {
+        // 우측 컬럼으로
+        currentCol = 1;
+        if (h <= avail) {
+          current.push(q);
+          usedCol2 = h;
+        } else {
+          // 우측에도 안 들어감 → 다음 페이지
+          pages.push(current);
+          current = [q];
+          usedCol1 = h;
+          usedCol2 = 0;
+          currentCol = 0;
+          pageIdx++;
+        }
+      } else {
+        // 우측 컬럼도 꽉참 → 다음 페이지
+        pages.push(current);
+        current = [q];
+        usedCol1 = h;
+        usedCol2 = 0;
+        currentCol = 0;
+        pageIdx++;
+      }
+    }
+
+    if (current.length > 0) pages.push(current);
+    return pages;
+  }, [questions, hasAnyAnswer, answerHeights, answerHeaderH, miniHeaderHeight]);
+
+  const totalPages = examPages.length + answerPages.length;
 
   return (
     <main className="paper-stage" ref={stageRef}>
@@ -2281,6 +2567,33 @@ function ExamPaper({
         </div>
       </div>
 
+      {/* 답지 항목 측정용 레이어 (2단 컬럼 너비 기준) */}
+      {hasAnyAnswer && (
+        <div
+          className="measure-layer"
+          aria-hidden="true"
+          ref={answerMeasureRef}
+        >
+          <div
+            data-ahead
+            style={{ width: PAPER_W_PX - PAD_X_MM * 2 * MM_TO_PX }}
+          >
+            <AnswerHeader header={header} />
+          </div>
+          <div className="measure-col" style={{ width: COL_W_PX }}>
+            {questions.map((q) => (
+              <div
+                data-aid={`a-${q.id}`}
+                key={q.id}
+                className="measure-item"
+              >
+                <AnswerItem q={q} num={numberMap.get(q.id)!} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="paper-stack">
         {examPages.map((page, i) => (
           <PaperPage
@@ -2292,16 +2605,18 @@ function ExamPaper({
             scale={scale}
           />
         ))}
-        {hasAnyAnswer && (
+        {answerPages.map((pageQuestions, i) => (
           <AnswerKeyPage
+            key={`ans-${i}`}
             header={header}
-            questions={questions}
+            questions={pageQuestions}
             numberMap={numberMap}
-            pageIndex={examPages.length}
+            pageIndex={examPages.length + i}
             totalPages={totalPages}
             scale={scale}
+            isFirst={i === 0}
           />
-        )}
+        ))}
       </div>
     </main>
   );
@@ -2597,6 +2912,21 @@ function OxBlock({ sentences }: { sentences: OxSentence[] }) {
 // ═══════════════════════════════════════════════════════
 //  ANSWER KEY PAGE (2단 구성, 통합 번호 + 유형별 답)
 // ═══════════════════════════════════════════════════════
+function AnswerHeader({ header }: { header: ExamHeader }) {
+  return (
+    <header className="answer-header">
+      <div className="answer-header-text">
+        <div className="answer-header-tag">ANSWER KEY</div>
+        <h1 className="answer-header-title">정답 및 해설</h1>
+      </div>
+      <div className="answer-header-meta">
+        <span>{header.academyName}</span>
+        {header.title && <span>{header.title}</span>}
+      </div>
+    </header>
+  );
+}
+
 function AnswerKeyPage({
   header,
   questions,
@@ -2604,6 +2934,7 @@ function AnswerKeyPage({
   pageIndex,
   totalPages,
   scale,
+  isFirst,
 }: {
   header: ExamHeader;
   questions: Question[];
@@ -2611,6 +2942,7 @@ function AnswerKeyPage({
   pageIndex: number;
   totalPages: number;
   scale: number;
+  isFirst: boolean;
 }) {
   return (
     <div
@@ -2624,16 +2956,11 @@ function AnswerKeyPage({
         <span className="corner br" />
 
         <div className="paper-inner">
-          <header className="answer-header">
-            <div className="answer-header-text">
-              <div className="answer-header-tag">ANSWER KEY</div>
-              <h1 className="answer-header-title">정답 및 해설</h1>
-            </div>
-            <div className="answer-header-meta">
-              <span>{header.academyName}</span>
-              {header.title && <span>{header.title}</span>}
-            </div>
-          </header>
+          {isFirst ? (
+            <AnswerHeader header={header} />
+          ) : (
+            <PaperHeaderMini header={header} />
+          )}
 
           <div className="answer-body-2col">
             {questions.map((q) => {
