@@ -2453,12 +2453,7 @@ function WorksheetGrammarPanel({
     });
   };
 
-  const updateBlank = (blankId: string, patch: Partial<WorksheetBlank>) => {
-    setComposer((s) => ({
-      ...s,
-      blanks: s.blanks.map((b) => (b.id === blankId ? { ...b, ...patch } : b)),
-    }));
-  };
+  
 
   const handleSelectionChange = () => {
     const ta = sentenceRef.current;
