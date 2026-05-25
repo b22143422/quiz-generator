@@ -3158,36 +3158,44 @@ textarea {
 
 .ws-item-english {
   margin-left: 6mm;
+  padding: 3mm 4mm;
+  border: 0.6px solid var(--ink-3);
+  border-radius: 1.2mm;
+  background: rgba(0, 0, 0, 0.018);
   font-size: 10pt;
-  line-height: 1.85;
+  line-height: 2;
   color: var(--ink);
   word-spacing: 0.02em;
   letter-spacing: 0;
   word-break: keep-all;
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .ws-blank {
   display: inline-block;
   position: relative;
-  margin: 0 0.5mm;
+  margin: 0 0.6mm;
+  padding: 0.3mm 3mm;
+  border: 0.6px solid var(--ink);
+  border-radius: 1mm;
+  background: var(--paper);
   white-space: nowrap;
   vertical-align: baseline;
+  line-height: 1.2;
+  min-width: 12mm;
+  text-align: center;
 }
 
 .ws-blank-marker {
   font-size: 9.5pt;
   font-weight: 700;
   color: var(--ink);
-  vertical-align: 1px;
+  display: inline-block;
 }
 
 .ws-blank-line {
-  display: inline-block;
-  width: 16mm;
-  border-bottom: 0.6px solid var(--ink);
-  margin-left: 0.4mm;
-  height: 1px;
-  vertical-align: 1.3mm;
+  display: none;
 }
 
 .ws-item-blanks {
