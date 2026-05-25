@@ -3420,7 +3420,13 @@ function Column({ blocks }: { blocks: Block[] }) {
   );
 }
 
-function PaperHeader({ header }: { header: ExamHeader }) {
+function PaperHeader({
+  header,
+  worksheetLabel,
+}: {
+  header: ExamHeader;
+  worksheetLabel?: string;
+}) {
   const hasLogo = !!header.logoDataUrl;
   return (
     <header className="paper-header">
@@ -3443,7 +3449,12 @@ function PaperHeader({ header }: { header: ExamHeader }) {
             )}
           </div>
           {header.title && (
-            <h1 className="paper-header-title">{header.title}</h1>
+            <h1 className="paper-header-title">
+              {header.title}
+              {worksheetLabel && (
+                <span className="paper-header-ws-label">{worksheetLabel}</span>
+              )}
+            </h1>
           )}
         </div>
         <div className="paper-header-name">
@@ -4015,7 +4026,11 @@ function WorksheetPaper({
 
       <div className="paper-stack">
         {items.length === 0 ? (
-          <WorksheetEmptyPage header={header} scale={scale} />
+          <WorksheetEmptyPage
+            header={header}
+            scale={scale}
+            worksheetLabel={worksheetType === 'grammar' ? '어법확인 워크시트' : '내용확인 워크시트'}
+          />
         ) : (
           <>
             {itemPages.map((page, i) => (
@@ -4028,6 +4043,7 @@ function WorksheetPaper({
                 header={header}
                 scale={scale}
                 isFirst={i === 0}
+                worksheetLabel={worksheetType === 'grammar' ? '어법확인 워크시트' : '내용확인 워크시트'}
               />
             ))}
             {explPages.map((page, i) => (
@@ -4052,9 +4068,11 @@ function WorksheetPaper({
 function WorksheetEmptyPage({
   header,
   scale,
+  worksheetLabel,
 }: {
   header: ExamHeader;
   scale: number;
+  worksheetLabel?: string;
 }) {
   return (
     <div
@@ -4067,7 +4085,7 @@ function WorksheetEmptyPage({
         <span className="corner bl" />
         <span className="corner br" />
         <div className="paper-inner">
-          <PaperHeader header={header} />
+          <PaperHeader header={header} worksheetLabel={worksheetLabel} />
           <div className="ws-empty">
             <div className="ws-empty-icon">
               <svg width="60" height="60" viewBox="0 0 24 24" fill="none">
@@ -4104,6 +4122,7 @@ function WorksheetPaperPage({
   header,
   scale,
   isFirst,
+  worksheetLabel,
 }: {
   items: WorksheetItem[];
   allItems: WorksheetItem[];
@@ -4112,6 +4131,7 @@ function WorksheetPaperPage({
   header: ExamHeader;
   scale: number;
   isFirst: boolean;
+  worksheetLabel?: string;
 }) {
   return (
     <div
@@ -4125,7 +4145,7 @@ function WorksheetPaperPage({
         <span className="corner br" />
         <div className="paper-inner">
           {isFirst ? (
-            <PaperHeader header={header} />
+            <PaperHeader header={header} worksheetLabel={worksheetLabel} />
           ) : (
             <PaperHeaderMini header={header} />
           )}
