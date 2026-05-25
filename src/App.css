@@ -2735,3 +2735,598 @@ textarea {
     height: auto;
   }
 }
+
+/* ───────────────────────────────────────────────────────
+   MODE BAR (시험지 / 워크시트 토글)
+─────────────────────────────────────────────────────── */
+.cp-mode-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 14px 26px 0;
+  margin-top: -4px;
+}
+
+.cp-mode-opt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  transition: all 0.18s ease;
+}
+
+.cp-mode-opt:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.cp-mode-opt.active {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
+  color: #1a1207;
+  font-weight: 700;
+  box-shadow: 0 4px 12px -4px var(--accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.cp-mode-opt.active svg {
+  color: #1a1207;
+}
+
+/* 워크시트 유형 (어법/내용) 토글 */
+.cp-worksheet-type-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  padding: 8px 26px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cp-worksheet-type-opt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+  transition: all 0.15s ease;
+}
+
+.cp-worksheet-type-opt:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.cp-worksheet-type-opt.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.cp-worksheet-type-mark {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 10px;
+}
+
+.cp-worksheet-type-opt.active .cp-worksheet-type-mark {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a1207;
+}
+
+/* ───────────────────────────────────────────────────────
+   WORKSHEET (GRAMMAR) - CONTROL PANEL
+─────────────────────────────────────────────────────── */
+.cp-field-sub {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-4);
+  letter-spacing: 0;
+  text-transform: none;
+  margin-left: 6px;
+}
+
+.cp-blank-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.cp-blank-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.cp-blank-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: #1a1207;
+}
+
+.cp-blank-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text-3);
+}
+
+.cp-blank-hint {
+  font-size: 11px;
+  color: var(--text-4);
+  letter-spacing: 0.02em;
+}
+
+.cp-sentence-input {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  background: var(--surface-2);
+}
+
+.cp-sentence-preview {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--info-soft);
+  border: 1px solid rgba(111, 168, 220, 0.2);
+  border-radius: 7px;
+}
+
+.cp-sentence-preview-label {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--info);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.cp-sentence-preview-text {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
+  word-break: keep-all;
+}
+
+.cp-blank-marker-inline {
+  display: inline-block;
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+/* 빈칸 리스트 */
+.cp-blanks-list {
+  margin-bottom: 14px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.cp-blanks-list-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.cp-blanks-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+
+.cp-blank-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.cp-blank-card:last-child {
+  margin-bottom: 0;
+}
+
+.cp-blank-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.cp-blank-marker {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: #1a1207;
+  border-radius: 50%;
+  font-family: var(--font-paper);
+  font-weight: 800;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.cp-blank-answer-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.cp-blank-answer {
+  flex: 1;
+  font-weight: 700;
+  background: var(--bg);
+}
+
+.cp-blank-remove {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 5px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.cp-blank-remove:hover {
+  color: var(--danger);
+  background: rgba(229, 115, 115, 0.1);
+}
+
+.cp-blank-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-blank-field label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.cp-blank-explanation {
+  min-height: 60px;
+  font-size: 12px;
+  background: var(--bg);
+}
+
+/* 워크시트 문장 목록 태그 */
+.cp-tag.tag-ws {
+  color: #6fa8dc;
+  border: 1px solid rgba(111, 168, 220, 0.35);
+  background: rgba(111, 168, 220, 0.1);
+}
+
+.cp-list-badge.ws {
+  background: rgba(111, 168, 220, 0.15);
+  color: #6fa8dc;
+}
+
+/* 곧 추가됩니다 (내용 워크시트) */
+.cp-coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 36px 24px;
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-md);
+  gap: 12px;
+}
+
+.cp-coming-soon svg {
+  color: var(--text-3);
+}
+
+.cp-coming-soon-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.005em;
+}
+
+.cp-coming-soon-desc {
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.6;
+  letter-spacing: -0.005em;
+}
+
+/* ───────────────────────────────────────────────────────
+   WORKSHEET PAPER (CANVAS) — 단일 컬럼
+─────────────────────────────────────────────────────── */
+.ws-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6mm;
+  min-height: 0;
+}
+
+.ws-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4mm;
+  color: var(--ink-muted);
+}
+
+.ws-empty-icon {
+  color: var(--ink-3);
+}
+
+.ws-empty-text {
+  font-size: 10.5pt;
+  text-align: center;
+  line-height: 1.7;
+  color: var(--ink-3);
+}
+
+.ws-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2.2mm;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.ws-item-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2mm;
+  align-items: baseline;
+}
+
+.ws-item-num {
+  font-family: var(--font-paper);
+  font-weight: 800;
+  font-size: 10.5pt;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+
+.ws-item-korean {
+  font-size: 9.5pt;
+  color: var(--ink);
+  line-height: 1.55;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  word-break: keep-all;
+  margin: 0;
+}
+
+.ws-item-english {
+  margin-left: 6mm;
+  font-size: 10pt;
+  line-height: 1.85;
+  color: var(--ink);
+  word-spacing: 0.02em;
+  letter-spacing: 0;
+  word-break: keep-all;
+}
+
+.ws-blank {
+  display: inline-block;
+  position: relative;
+  margin: 0 0.5mm;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
+.ws-blank-marker {
+  font-size: 9.5pt;
+  font-weight: 700;
+  color: var(--ink);
+  vertical-align: 1px;
+}
+
+.ws-blank-line {
+  display: inline-block;
+  width: 16mm;
+  border-bottom: 0.6px solid var(--ink);
+  margin-left: 0.4mm;
+  height: 1px;
+  vertical-align: 1.3mm;
+}
+
+.ws-item-blanks {
+  margin-left: 6mm;
+  margin-top: 1mm;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8mm;
+}
+
+.ws-item-blank-row {
+  display: flex;
+  align-items: baseline;
+  gap: 2mm;
+  font-size: 9pt;
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.ws-item-blank-marker {
+  font-weight: 700;
+  font-size: 9.5pt;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+.ws-item-blank-fields {
+  display: flex;
+  align-items: baseline;
+  gap: 3mm;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.ws-item-blank-field {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5mm;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.ws-item-blank-sep {
+  color: var(--ink-muted);
+}
+
+.ws-item-blank-write {
+  display: inline-block;
+  width: 28mm;
+  border-bottom: 0.5px solid var(--ink);
+  height: 1px;
+  vertical-align: 1mm;
+}
+
+/* 해설지 */
+.ws-expl-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5mm;
+  min-height: 0;
+}
+
+.ws-expl-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5mm;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.ws-expl-item-head {
+  display: flex;
+  align-items: baseline;
+  gap: 2mm;
+}
+
+.ws-expl-item-num {
+  font-family: var(--font-paper);
+  font-weight: 800;
+  font-size: 10.5pt;
+  color: var(--ink);
+}
+
+.ws-expl-blanks {
+  margin-left: 4mm;
+  display: flex;
+  flex-direction: column;
+  gap: 1.8mm;
+}
+
+.ws-expl-blank {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8mm;
+}
+
+.ws-expl-blank-head {
+  display: flex;
+  align-items: baseline;
+  gap: 1.6mm;
+  flex-wrap: wrap;
+  font-size: 9.5pt;
+  line-height: 1.5;
+}
+
+.ws-expl-marker {
+  font-family: var(--font-paper);
+  font-weight: 800;
+  font-size: 10pt;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+.ws-expl-answer {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.06);
+  padding: 0.2mm 1.6mm;
+  border-radius: 0.8mm;
+  font-size: 9pt;
+}
+
+.ws-expl-em-dash {
+  color: var(--ink-3);
+}
+
+.ws-expl-point {
+  font-weight: 700;
+  color: var(--ink);
+  font-size: 9.5pt;
+}
+
+.ws-expl-text {
+  margin: 0 0 0 2.5mm;
+  font-size: 8.8pt;
+  line-height: 1.6;
+  color: var(--ink-2);
+  word-break: keep-all;
+  letter-spacing: -0.005em;
+}
