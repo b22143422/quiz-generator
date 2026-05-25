@@ -17,6 +17,9 @@ const DEFAULT_LOGO =
 // ═══════════════════════════════════════════════════════
 //  TYPES
 // ═══════════════════════════════════════════════════════
+type PaperMode = 'exam' | 'worksheet';
+type WorksheetType = 'grammar' | 'content';
+
 type QuestionType = 'multiple-choice' | 'written' | 'ox';
 
 interface OxSentence {
@@ -47,6 +50,22 @@ interface CommonGroup {
   commonPassage: string;      // 공통 본문 (위지윅 HTML)
 }
 
+// ─── 워크시트 (어법) ───
+interface WorksheetBlank {
+  id: string;
+  marker: string;        // ⓐ, ⓑ, ⓒ... (자동 생성)
+  answer: string;        // 정답 단어/표현
+  grammarPoint: string;  // 어법명 (예: "사역동사 let + O + 동사원형")
+  explanation: string;   // 자세한 해설
+}
+
+interface WorksheetItem {
+  id: string;
+  koreanTranslation: string;      // 한국어 해석
+  englishSentence: string;        // 영어 문장 (빈칸은 {{marker:blank-id}} 토큰)
+  blanks: WorksheetBlank[];
+}
+
 interface ExamHeader {
   academyName: string;
   grade: string;
@@ -59,9 +78,12 @@ interface SavedPaper {
   id: string;
   name: string;
   createdAt: number;
+  mode: PaperMode;                  // 'exam' | 'worksheet'
+  worksheetType?: WorksheetType;    // 워크시트일 때만 의미
   header: ExamHeader;
-  questions: Question[];
-  groups: CommonGroup[];
+  questions: Question[];            // 시험지 모드용
+  groups: CommonGroup[];            // 시험지 모드용
+  worksheetItems: WorksheetItem[];  // 워크시트 모드용
 }
 
 // ═══════════════════════════════════════════════════════
@@ -130,6 +152,25 @@ function normalizeGroup(g: any): CommonGroup {
   };
 }
 
+function normalizeWorksheetBlank(b: any): WorksheetBlank {
+  return {
+    id: b?.id ?? `b${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    marker: b?.marker ?? 'ⓐ',
+    answer: b?.answer ?? '',
+    grammarPoint: b?.grammarPoint ?? '',
+    explanation: b?.explanation ?? '',
+  };
+}
+
+function normalizeWorksheetItem(w: any): WorksheetItem {
+  return {
+    id: w?.id ?? `w${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    koreanTranslation: w?.koreanTranslation ?? '',
+    englishSentence: w?.englishSentence ?? '',
+    blanks: Array.isArray(w?.blanks) ? w.blanks.map(normalizeWorksheetBlank) : [],
+  };
+}
+
 function parsePapers(raw: string | null): SavedPaper[] {
   if (!raw) return [];
   try {
@@ -137,16 +178,26 @@ function parsePapers(raw: string | null): SavedPaper[] {
     if (!Array.isArray(parsed)) return [];
     return parsed
       .filter((p) => p && p.id && p.header)
-      .map((p) => ({
-        id: p.id,
-        name: p.name ?? '제목 없음',
-        createdAt: p.createdAt ?? Date.now(),
-        header: p.header,
-        questions: Array.isArray(p.questions)
-          ? p.questions.map(normalizeQuestion)
-          : [],
-        groups: Array.isArray(p.groups) ? p.groups.map(normalizeGroup) : [],
-      }));
+      .map((p) => {
+        const mode: PaperMode = p.mode === 'worksheet' ? 'worksheet' : 'exam';
+        const worksheetType: WorksheetType =
+          p.worksheetType === 'content' ? 'content' : 'grammar';
+        return {
+          id: p.id,
+          name: p.name ?? '제목 없음',
+          createdAt: p.createdAt ?? Date.now(),
+          mode,
+          worksheetType,
+          header: p.header,
+          questions: Array.isArray(p.questions)
+            ? p.questions.map(normalizeQuestion)
+            : [],
+          groups: Array.isArray(p.groups) ? p.groups.map(normalizeGroup) : [],
+          worksheetItems: Array.isArray(p.worksheetItems)
+            ? p.worksheetItems.map(normalizeWorksheetItem)
+            : [],
+        };
+      });
   } catch {
     return [];
   }
@@ -283,9 +334,13 @@ const initialHeader: ExamHeader = {
 //  ROOT
 // ═══════════════════════════════════════════════════════
 export default function App() {
+  const [paperMode, setPaperMode] = useState<PaperMode>('exam');
+  const [worksheetType, setWorksheetType] = useState<WorksheetType>('grammar');
+
   const [header, setHeader] = useState<ExamHeader>(initialHeader);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [groups, setGroups] = useState<CommonGroup[]>([]);
+  const [worksheetItems, setWorksheetItems] = useState<WorksheetItem[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [library, setLibrary] = useState<SavedPaper[]>(() => loadLibrary());
 
@@ -318,6 +373,50 @@ export default function App() {
       [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
       return next;
     });
+  };
+
+  // ─── 워크시트 아이템 관리 ───
+  const addWorksheetItem = (item: Omit<WorksheetItem, 'id'>) =>
+    setWorksheetItems((prev) => [
+      ...prev,
+      { ...item, id: `w${Date.now()}_${Math.random().toString(36).slice(2)}` },
+    ]);
+
+  const updateWorksheetItem = (id: string, patch: Partial<WorksheetItem>) =>
+    setWorksheetItems((prev) =>
+      prev.map((w) => (w.id === id ? { ...w, ...patch } : w))
+    );
+
+  const deleteWorksheetItem = (id: string) => {
+    setWorksheetItems((prev) => prev.filter((w) => w.id !== id));
+    if (editingId === id) setEditingId(null);
+  };
+
+  const moveWorksheetItem = (id: string, dir: -1 | 1) => {
+    setWorksheetItems((prev) => {
+      const idx = prev.findIndex((w) => w.id === id);
+      if (idx < 0) return prev;
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+      return next;
+    });
+  };
+
+  // 모드 전환 시 작업 보호
+  const switchMode = (mode: PaperMode) => {
+    if (mode === paperMode) return;
+    const hasWork =
+      questions.length > 0 || worksheetItems.length > 0;
+    if (hasWork) {
+      const ok = confirm(
+        '모드를 바꾸면 현재 작업 중인 내용이 다른 모드로 전환되어 캔버스에 보이지 않게 됩니다.\n(라이브러리에 저장 안 한 내용은 잃을 수 있어요)\n계속할까요?'
+      );
+      if (!ok) return;
+    }
+    setPaperMode(mode);
+    setEditingId(null);
   };
 
   // ─── 공통 발문 그룹 관리 ───
@@ -358,17 +457,23 @@ export default function App() {
   const savePaper = () => {
     const defaultName =
       header.title?.trim() ||
-      `시험지 ${new Date().toLocaleDateString('ko-KR')}`;
-    const name = prompt('이 시험지를 어떤 이름으로 저장할까요?', defaultName);
+      `${paperMode === 'exam' ? '시험지' : '워크시트'} ${new Date().toLocaleDateString('ko-KR')}`;
+    const name = prompt('어떤 이름으로 저장할까요?', defaultName);
     if (!name?.trim()) return;
 
     const newPaper: SavedPaper = {
       id: `paper_${Date.now()}`,
       name: name.trim(),
       createdAt: Date.now(),
+      mode: paperMode,
+      worksheetType: paperMode === 'worksheet' ? worksheetType : undefined,
       header: { ...header },
       questions: questions.map((q) => ({ ...q })),
       groups: groups.map((g) => ({ ...g })),
+      worksheetItems: worksheetItems.map((w) => ({
+        ...w,
+        blanks: w.blanks.map((b) => ({ ...b })),
+      })),
     };
     const next = [newPaper, ...library];
     setLibrary(next);
@@ -378,38 +483,45 @@ export default function App() {
   const loadPaper = (id: string) => {
     const paper = library.find((p) => p.id === id);
     if (!paper) return;
-    if (questions.length > 0) {
+    const hasWork = questions.length > 0 || worksheetItems.length > 0;
+    if (hasWork) {
       const ok = confirm(
-        '현재 작업 중인 시험지가 사라지고 저장된 시험지로 대체됩니다. 계속할까요?\n\n(저장하지 않은 변경사항은 사라집니다)'
+        '현재 작업 중인 내용이 사라지고 저장된 항목으로 대체됩니다. 계속할까요?\n\n(저장하지 않은 변경사항은 사라집니다)'
       );
       if (!ok) return;
     }
+    setPaperMode(paper.mode ?? 'exam');
+    if (paper.worksheetType) setWorksheetType(paper.worksheetType);
     setHeader(paper.header);
     setQuestions(paper.questions.map(normalizeQuestion));
     setGroups(paper.groups.map(normalizeGroup));
+    setWorksheetItems(
+      (paper.worksheetItems ?? []).map(normalizeWorksheetItem)
+    );
     setEditingId(null);
   };
 
   const deletePaper = (id: string) => {
     const paper = library.find((p) => p.id === id);
     if (!paper) return;
-    if (!confirm(`"${paper.name}" 시험지를 라이브러리에서 삭제할까요?`))
-      return;
+    if (!confirm(`"${paper.name}"을(를) 라이브러리에서 삭제할까요?`)) return;
     const next = library.filter((p) => p.id !== id);
     setLibrary(next);
     persistLibrary(next);
   };
 
   const newBlankPaper = () => {
-    if (questions.length > 0) {
+    const hasWork = questions.length > 0 || worksheetItems.length > 0;
+    if (hasWork) {
       const ok = confirm(
-        '현재 작업 중인 시험지가 사라집니다. 새 시험지로 시작할까요?'
+        '현재 작업 중인 내용이 사라집니다. 새로 시작할까요?'
       );
       if (!ok) return;
     }
     setHeader({ ...initialHeader });
     setQuestions([]);
     setGroups([]);
+    setWorksheetItems([]);
     setEditingId(null);
   };
 
@@ -463,16 +575,25 @@ export default function App() {
   return (
     <div className="app-shell">
       <ControlPanel
+        paperMode={paperMode}
+        worksheetType={worksheetType}
+        onSwitchMode={switchMode}
+        onSwitchWorksheetType={setWorksheetType}
         header={header}
         onHeaderChange={updateHeader}
         questions={questions}
         groups={groups}
+        worksheetItems={worksheetItems}
         editingId={editingId}
         onSelectEdit={setEditingId}
         onAdd={addQuestion}
         onUpdate={updateQuestion}
         onDelete={deleteQuestion}
         onMove={moveQuestion}
+        onAddWorksheetItem={addWorksheetItem}
+        onUpdateWorksheetItem={updateWorksheetItem}
+        onDeleteWorksheetItem={deleteWorksheetItem}
+        onMoveWorksheetItem={moveWorksheetItem}
         onCreateGroup={createGroup}
         onUpdateGroup={updateGroup}
         onUngroup={ungroupQuestions}
@@ -484,7 +605,15 @@ export default function App() {
         onExportLibrary={exportLibrary}
         onImportLibrary={importLibrary}
       />
-      <ExamPaper header={header} questions={questions} groups={groups} />
+      {paperMode === 'exam' ? (
+        <ExamPaper header={header} questions={questions} groups={groups} />
+      ) : (
+        <WorksheetPaper
+          header={header}
+          items={worksheetItems}
+          worksheetType={worksheetType}
+        />
+      )}
     </div>
   );
 }
@@ -578,16 +707,25 @@ function RichTextEditor({
 //  CONTROL PANEL
 // ═══════════════════════════════════════════════════════
 interface ControlPanelProps {
+  paperMode: PaperMode;
+  worksheetType: WorksheetType;
+  onSwitchMode: (mode: PaperMode) => void;
+  onSwitchWorksheetType: (type: WorksheetType) => void;
   header: ExamHeader;
   onHeaderChange: (patch: Partial<ExamHeader>) => void;
   questions: Question[];
   groups: CommonGroup[];
+  worksheetItems: WorksheetItem[];
   editingId: string | null;
   onSelectEdit: (id: string | null) => void;
   onAdd: (q: Omit<Question, 'id'>) => void;
   onUpdate: (id: string, patch: Partial<Question>) => void;
   onDelete: (id: string) => void;
   onMove: (id: string, dir: -1 | 1) => void;
+  onAddWorksheetItem: (item: Omit<WorksheetItem, 'id'>) => void;
+  onUpdateWorksheetItem: (id: string, patch: Partial<WorksheetItem>) => void;
+  onDeleteWorksheetItem: (id: string) => void;
+  onMoveWorksheetItem: (id: string, dir: -1 | 1) => void;
   onCreateGroup: (
     ids: string[],
     commonQT: string,
@@ -630,16 +768,25 @@ const blankComposer: ComposerState = {
 };
 
 function ControlPanel({
+  paperMode,
+  worksheetType,
+  onSwitchMode,
+  onSwitchWorksheetType,
   header,
   onHeaderChange,
   questions,
   groups,
+  worksheetItems,
   editingId,
   onSelectEdit,
   onAdd,
   onUpdate,
   onDelete,
   onMove,
+  onAddWorksheetItem,
+  onUpdateWorksheetItem,
+  onDeleteWorksheetItem,
+  onMoveWorksheetItem,
   onCreateGroup,
   onUpdateGroup,
   onUngroup,
@@ -817,7 +964,7 @@ function ControlPanel({
         <button
           className="cp-brand-action"
           onClick={onNewBlank}
-          title="새 빈 시험지로 시작"
+          title="새로 시작"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
             <path
@@ -829,6 +976,60 @@ function ControlPanel({
           </svg>
         </button>
       </div>
+
+      {/* ───────── 모드 토글 ───────── */}
+      <div className="cp-mode-bar">
+        <button
+          className={`cp-mode-opt ${paperMode === 'exam' ? 'active' : ''}`}
+          onClick={() => onSwitchMode('exam')}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          시험지
+        </button>
+        <button
+          className={`cp-mode-opt ${paperMode === 'worksheet' ? 'active' : ''}`}
+          onClick={() => onSwitchMode('worksheet')}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          워크시트
+        </button>
+      </div>
+
+      {/* 워크시트 모드일 때만 - 유형 토글 */}
+      {paperMode === 'worksheet' && (
+        <div className="cp-worksheet-type-bar">
+          <button
+            className={`cp-worksheet-type-opt ${worksheetType === 'grammar' ? 'active' : ''}`}
+            onClick={() => onSwitchWorksheetType('grammar')}
+          >
+            <span className="cp-worksheet-type-mark">G</span>
+            어법
+          </button>
+          <button
+            className={`cp-worksheet-type-opt ${worksheetType === 'content' ? 'active' : ''}`}
+            onClick={() => onSwitchWorksheetType('content')}
+          >
+            <span className="cp-worksheet-type-mark">C</span>
+            내용
+          </button>
+        </div>
+      )}
 
       {/* ───────── 01 시험지 정보 ───────── */}
       <section className="cp-section">
@@ -900,6 +1101,7 @@ function ControlPanel({
       </section>
 
       {/* ───────── 02 문제 추가 ───────── */}
+      {paperMode === 'exam' && (
       <section className="cp-section">
         <div className="cp-section-head">
           <span className="cp-section-num">02</span>
@@ -1189,8 +1391,10 @@ function ControlPanel({
           )}
         </div>
       </section>
+      )}
 
       {/* ───────── 03 문제 목록 ───────── */}
+      {paperMode === 'exam' && (
       <section className="cp-section">
         <button
           className="cp-section-head cp-section-head-toggle"
@@ -1284,8 +1488,10 @@ function ControlPanel({
           </>
         )}
       </section>
+      )}
 
       {/* ───────── 04 답지 작성 ───────── */}
+      {paperMode === 'exam' && (
       <section className="cp-section">
         <button
           className="cp-section-head cp-section-head-toggle"
@@ -1314,6 +1520,46 @@ function ControlPanel({
             </div>
           ))}
       </section>
+      )}
+
+      {/* ───────── 워크시트 모드용 패널 ───────── */}
+      {paperMode === 'worksheet' && worksheetType === 'grammar' && (
+        <WorksheetGrammarPanel
+          items={worksheetItems}
+          editingId={editingId}
+          onSelectEdit={onSelectEdit}
+          onAdd={onAddWorksheetItem}
+          onUpdate={onUpdateWorksheetItem}
+          onDelete={onDeleteWorksheetItem}
+          onMove={onMoveWorksheetItem}
+        />
+      )}
+
+      {paperMode === 'worksheet' && worksheetType === 'content' && (
+        <section className="cp-section">
+          <div className="cp-section-head">
+            <span className="cp-section-num">02</span>
+            <h3>내용 워크시트</h3>
+          </div>
+          <div className="cp-coming-soon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
+              <path
+                d="M12 6v6l4 2"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="cp-coming-soon-title">곧 추가됩니다</div>
+            <div className="cp-coming-soon-desc">
+              내용 워크시트 유형은 작업자가 추후 확정한 후 추가될 예정입니다.
+              <br />
+              어법 워크시트는 좌측 상단 토글에서 선택해 사용할 수 있어요.
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ───────── 05 라이브러리 ───────── */}
       <section className="cp-section">
@@ -2012,6 +2258,477 @@ function Field({
 function RichTextDisplay({ html }: { html: string }) {
   const safe = sanitizeRichHtml(html);
   return <span dangerouslySetInnerHTML={{ __html: safe }} />;
+}
+
+// ═══════════════════════════════════════════════════════
+//  WORKSHEET (GRAMMAR) — 어법 워크시트
+// ═══════════════════════════════════════════════════════
+const BLANK_MARKERS = ['ⓐ', 'ⓑ', 'ⓒ', 'ⓓ', 'ⓔ', 'ⓕ', 'ⓖ', 'ⓗ', 'ⓘ', 'ⓙ'];
+
+// 영문장 텍스트에서 마커 토큰 처리
+// 토큰 형식: ⟦BLANK:blank-id⟧
+// 캔버스/표시 시: 해당 위치에 ⓐ_________ 등 마커+밑줄 합체
+
+function makeBlankToken(blankId: string): string {
+  return `⟦BLANK:${blankId}⟧`;
+}
+
+interface ParsedToken {
+  type: 'text' | 'blank';
+  text: string;
+  blankId?: string;
+}
+
+function parseSentence(sentence: string): ParsedToken[] {
+  const result: ParsedToken[] = [];
+  const regex = /⟦BLANK:([^⟧]+)⟧/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(sentence)) !== null) {
+    if (m.index > last) {
+      result.push({ type: 'text', text: sentence.slice(last, m.index) });
+    }
+    result.push({ type: 'blank', text: '', blankId: m[1] });
+    last = m.index + m[0].length;
+  }
+  if (last < sentence.length) {
+    result.push({ type: 'text', text: sentence.slice(last) });
+  }
+  return result;
+}
+
+// 컴포저 상태
+interface WorksheetComposerState {
+  koreanTranslation: string;
+  englishSentence: string;
+  blanks: WorksheetBlank[];
+}
+
+const blankWorksheetComposer: WorksheetComposerState = {
+  koreanTranslation: '',
+  englishSentence: '',
+  blanks: [],
+};
+
+function WorksheetGrammarPanel({
+  items,
+  editingId,
+  onSelectEdit,
+  onAdd,
+  onUpdate,
+  onDelete,
+  onMove,
+}: {
+  items: WorksheetItem[];
+  editingId: string | null;
+  onSelectEdit: (id: string | null) => void;
+  onAdd: (item: Omit<WorksheetItem, 'id'>) => void;
+  onUpdate: (id: string, patch: Partial<WorksheetItem>) => void;
+  onDelete: (id: string) => void;
+  onMove: (id: string, dir: -1 | 1) => void;
+}) {
+  const [composer, setComposer] = useState<WorksheetComposerState>(
+    blankWorksheetComposer
+  );
+  const [listExpanded, setListExpanded] = useState(false);
+
+  // 영문장 입력 textarea ref (커서 위치 + selection 감지)
+  const sentenceRef = useRef<HTMLTextAreaElement>(null);
+  const [hasSelection, setHasSelection] = useState(false);
+
+  // 편집 모드 진입 시 데이터 로드
+  useEffect(() => {
+    if (editingId) {
+      const item = items.find((it) => it.id === editingId);
+      if (item) {
+        setComposer({
+          koreanTranslation: item.koreanTranslation,
+          englishSentence: item.englishSentence,
+          blanks: item.blanks.map((b) => ({ ...b })),
+        });
+        setListExpanded(true);
+      }
+    }
+  }, [editingId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 영문장 내 블랭크 마커 재정렬 (1, 2, 3번째 등장 순서대로 ⓐⓑⓒ)
+  const reorderedBlanks = useMemo(() => {
+    // englishSentence에 등장하는 순서대로 blanks 재정렬
+    const tokens = parseSentence(composer.englishSentence);
+    const idsInOrder: string[] = [];
+    for (const t of tokens) {
+      if (t.type === 'blank' && t.blankId) idsInOrder.push(t.blankId);
+    }
+    const byId = new Map(composer.blanks.map((b) => [b.id, b]));
+    const ordered: WorksheetBlank[] = [];
+    idsInOrder.forEach((id, i) => {
+      const b = byId.get(id);
+      if (b) {
+        ordered.push({ ...b, marker: BLANK_MARKERS[i] ?? `(${i + 1})` });
+      }
+    });
+    return ordered;
+  }, [composer.englishSentence, composer.blanks]);
+
+  const reset = () => {
+    setComposer(blankWorksheetComposer);
+    onSelectEdit(null);
+  };
+
+  const submit = () => {
+    if (!composer.englishSentence.trim()) {
+      alert('영어 문장을 입력해주세요.');
+      return;
+    }
+    const payload: Omit<WorksheetItem, 'id'> = {
+      koreanTranslation: composer.koreanTranslation,
+      englishSentence: composer.englishSentence,
+      blanks: reorderedBlanks,
+    };
+    if (editingId) {
+      onUpdate(editingId, payload);
+    } else {
+      onAdd(payload);
+    }
+    reset();
+  };
+
+  // 선택된 단어를 빈칸으로 만들기
+  const makeBlankFromSelection = () => {
+    const ta = sentenceRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    if (start === end) {
+      alert('빈칸으로 만들 단어를 드래그해서 선택해주세요.');
+      return;
+    }
+    const selected = composer.englishSentence.slice(start, end).trim();
+    if (!selected) {
+      alert('선택한 부분이 공백입니다. 단어를 드래그해주세요.');
+      return;
+    }
+
+    // 새 빈칸 ID 생성
+    const blankId = `b${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const token = makeBlankToken(blankId);
+
+    // 선택 영역의 원래 문장 양옆 공백 유지하면서 토큰으로 교체
+    const before = composer.englishSentence.slice(0, start);
+    const after = composer.englishSentence.slice(end);
+
+    // 선택 영역의 leading/trailing 공백을 보존 (이게 자연스러움)
+    const origSelected = composer.englishSentence.slice(start, end);
+    const lead = origSelected.match(/^\s*/)?.[0] ?? '';
+    const trail = origSelected.match(/\s*$/)?.[0] ?? '';
+    const newSentence = before + lead + token + trail + after;
+
+    const newBlank: WorksheetBlank = {
+      id: blankId,
+      marker: '', // reorderedBlanks에서 재할당
+      answer: selected,
+      grammarPoint: '',
+      explanation: '',
+    };
+
+    setComposer({
+      ...composer,
+      englishSentence: newSentence,
+      blanks: [...composer.blanks, newBlank],
+    });
+    setHasSelection(false);
+  };
+
+  // 빈칸 제거 (영문장에서 토큰 빼고 원래 단어로 복원)
+  const removeBlank = (blankId: string) => {
+    const blank = composer.blanks.find((b) => b.id === blankId);
+    if (!blank) return;
+    const token = makeBlankToken(blankId);
+    const newSentence = composer.englishSentence.replace(token, blank.answer);
+    setComposer({
+      ...composer,
+      englishSentence: newSentence,
+      blanks: composer.blanks.filter((b) => b.id !== blankId),
+    });
+  };
+
+  const updateBlank = (blankId: string, patch: Partial<WorksheetBlank>) => {
+    setComposer((s) => ({
+      ...s,
+      blanks: s.blanks.map((b) => (b.id === blankId ? { ...b, ...patch } : b)),
+    }));
+  };
+
+  const handleSelectionChange = () => {
+    const ta = sentenceRef.current;
+    if (!ta) return;
+    setHasSelection(ta.selectionStart !== ta.selectionEnd);
+  };
+
+  return (
+    <>
+      {/* ───────── 02 어법 워크시트 입력 ───────── */}
+      <section className="cp-section">
+        <div className="cp-section-head">
+          <span className="cp-section-num">02</span>
+          <h3>{editingId ? '문장 수정' : '문장 추가'}</h3>
+          {editingId && (
+            <button className="cp-mini-btn" onClick={reset}>
+              새 문장으로
+            </button>
+          )}
+        </div>
+
+        <div className="cp-field">
+          <label>한국어 해석</label>
+          <textarea
+            className="cp-textarea"
+            value={composer.koreanTranslation}
+            placeholder={'예: "내 상사는 내가 더 이상 휴가를 내도록 허락하지 않을 거야."'}
+            onChange={(e) =>
+              setComposer({ ...composer, koreanTranslation: e.target.value })
+            }
+            rows={2}
+          />
+        </div>
+
+        <div className="cp-field">
+          <label>
+            영어 문장
+            <span className="cp-field-sub">단어 드래그 후 "빈칸으로 만들기"</span>
+          </label>
+          <div className="cp-blank-toolbar">
+            <button
+              className="cp-blank-btn"
+              onClick={makeBlankFromSelection}
+              disabled={!hasSelection}
+              title={
+                hasSelection
+                  ? '선택한 단어를 빈칸으로 변환'
+                  : '먼저 영문장에서 단어를 드래그해서 선택'
+              }
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                <rect
+                  x="3"
+                  y="9"
+                  width="18"
+                  height="6"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeDasharray="3 2"
+                />
+                <path
+                  d="M7 12h2 M14 12h2"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+              빈칸으로 만들기
+            </button>
+            <span className="cp-blank-hint">
+              {hasSelection ? '선택됨 ✓' : '문장에서 단어 드래그'}
+            </span>
+          </div>
+          <textarea
+            ref={sentenceRef}
+            className="cp-textarea cp-sentence-input"
+            value={composer.englishSentence}
+            placeholder={
+              "예: My boss won't let me take any more time off.\n— 단어를 드래그한 뒤 위 [빈칸으로 만들기] 버튼을 누르세요."
+            }
+            onChange={(e) =>
+              setComposer({ ...composer, englishSentence: e.target.value })
+            }
+            onSelect={handleSelectionChange}
+            onMouseUp={handleSelectionChange}
+            onKeyUp={handleSelectionChange}
+            rows={4}
+          />
+          {/* 미리보기 */}
+          {composer.englishSentence && (
+            <div className="cp-sentence-preview">
+              <span className="cp-sentence-preview-label">미리보기</span>
+              <div className="cp-sentence-preview-text">
+                <SentencePreview
+                  tokens={parseSentence(composer.englishSentence)}
+                  markersById={Object.fromEntries(
+                    reorderedBlanks.map((b) => [b.id, b.marker])
+                  )}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 빈칸 목록 + 어법명/해설 입력 */}
+        {reorderedBlanks.length > 0 && (
+          <div className="cp-blanks-list">
+            <div className="cp-blanks-list-head">
+              <span>빈칸 정보</span>
+              <span className="cp-blanks-count">{reorderedBlanks.length}개</span>
+            </div>
+            {reorderedBlanks.map((b) => (
+              <div key={b.id} className="cp-blank-card">
+                <div className="cp-blank-card-head">
+                  <span className="cp-blank-marker">{b.marker}</span>
+                  <span className="cp-blank-answer-label">정답:</span>
+                  <input
+                    className="cp-input cp-blank-answer"
+                    value={b.answer}
+                    onChange={(e) => updateBlank(b.id, { answer: e.target.value })}
+                    placeholder="정답 단어/표현"
+                  />
+                  <button
+                    className="cp-blank-remove"
+                    onClick={() => removeBlank(b.id)}
+                    title="이 빈칸 제거 (원래 단어로 복원)"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="cp-blank-fields">
+                  <div className="cp-blank-field">
+                    <label>어법명</label>
+                    <input
+                      className="cp-input"
+                      value={b.grammarPoint}
+                      placeholder="예: 사역동사 let + O + 동사원형"
+                      onChange={(e) =>
+                        updateBlank(b.id, { grammarPoint: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="cp-blank-field">
+                    <label>해설</label>
+                    <textarea
+                      className="cp-textarea cp-blank-explanation"
+                      value={b.explanation}
+                      placeholder="자세한 해설 입력"
+                      onChange={(e) =>
+                        updateBlank(b.id, { explanation: e.target.value })
+                      }
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="cp-actions">
+          <button className="cp-btn-primary" onClick={submit}>
+            {editingId ? '수정 적용' : '워크시트에 추가'}
+          </button>
+          {editingId && (
+            <button
+              className="cp-btn-ghost danger"
+              onClick={() => {
+                if (confirm('이 문장을 삭제할까요?')) {
+                  onDelete(editingId);
+                  reset();
+                }
+              }}
+            >
+              삭제
+            </button>
+          )}
+        </div>
+      </section>
+
+      {/* ───────── 03 문장 목록 ───────── */}
+      <section className="cp-section">
+        <button
+          className="cp-section-head cp-section-head-toggle"
+          onClick={() => setListExpanded((v) => !v)}
+          aria-expanded={listExpanded}
+        >
+          <span className="cp-section-num">03</span>
+          <h3>문장 목록</h3>
+          <span className="cp-list-total">{items.length} 문장</span>
+          <Chevron open={listExpanded} />
+        </button>
+
+        {listExpanded &&
+          (items.length === 0 ? (
+            <div className="cp-empty">아직 추가된 문장이 없습니다.</div>
+          ) : (
+            <ul className="cp-list">
+              {items.map((it, idx) => (
+                <li
+                  key={it.id}
+                  className={`cp-list-item ${editingId === it.id ? 'editing' : ''}`}
+                >
+                  <div className="cp-tag tag-ws">
+                    어<em>{idx + 1}</em>
+                  </div>
+                  <div
+                    className="cp-list-text"
+                    onClick={() => onSelectEdit(it.id)}
+                  >
+                    {it.blanks.length > 0 && (
+                      <span className="cp-list-badge ws">
+                        빈칸 {it.blanks.length}
+                      </span>
+                    )}
+                    {it.koreanTranslation || it.englishSentence || (
+                      <i>(내용 없음)</i>
+                    )}
+                  </div>
+                  <div className="cp-list-tools">
+                    <button
+                      title="위로"
+                      onClick={() => onMove(it.id, -1)}
+                      disabled={idx === 0}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      title="아래로"
+                      onClick={() => onMove(it.id, 1)}
+                      disabled={idx === items.length - 1}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      title="삭제"
+                      className="danger"
+                      onClick={() => onDelete(it.id)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ))}
+      </section>
+    </>
+  );
+}
+
+function SentencePreview({
+  tokens,
+  markersById,
+}: {
+  tokens: ParsedToken[];
+  markersById: Record<string, string>;
+}) {
+  return (
+    <>
+      {tokens.map((t, i) => {
+        if (t.type === 'text') return <span key={i}>{t.text}</span>;
+        const marker = markersById[t.blankId!] ?? '?';
+        return (
+          <span key={i} className="cp-blank-marker-inline">
+            {marker}_________
+          </span>
+        );
+      })}
+    </>
+  );
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3030,5 +3747,561 @@ function AnswerItem({ q, num }: { q: Question; num: number }) {
         </div>
       </span>
     </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════
+//  WORKSHEET PAPER (단일 컬럼 캔버스)
+// ═══════════════════════════════════════════════════════
+function WorksheetPaper({
+  header,
+  items,
+  worksheetType,
+}: {
+  header: ExamHeader;
+  items: WorksheetItem[];
+  worksheetType: WorksheetType;
+}) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+  const explMeasureRef = useRef<HTMLDivElement>(null);
+  const scale = useDisplayScale(stageRef);
+
+  const [itemHeights, setItemHeights] = useState<Record<string, number>>({});
+  const [explHeights, setExplHeights] = useState<Record<string, number>>({});
+  const [headerHeight, setHeaderHeight] = useState(160);
+  const [miniHeaderHeight, setMiniHeaderHeight] = useState(40);
+  const [answerHeaderH, setAnswerHeaderH] = useState(60);
+
+  // 측정
+  useLayoutEffect(() => {
+    const node = measureRef.current;
+    if (!node) return;
+
+    let raf = 0;
+    const measure = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const next: Record<string, number> = {};
+        node.querySelectorAll<HTMLElement>('[data-wid]').forEach((el) => {
+          next[el.dataset.wid!] = el.getBoundingClientRect().height;
+        });
+        setItemHeights((prev) => {
+          const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+          for (const k of keys) {
+            if (Math.abs((prev[k] ?? 0) - (next[k] ?? 0)) > 0.5) return next;
+          }
+          return prev;
+        });
+
+        const head = node.querySelector<HTMLElement>('[data-mhead]');
+        if (head) {
+          const hh = head.getBoundingClientRect().height;
+          setHeaderHeight((p) => (Math.abs(p - hh) > 0.5 ? hh : p));
+        }
+        const miniHead = node.querySelector<HTMLElement>('[data-mhead-mini]');
+        if (miniHead) {
+          const mh = miniHead.getBoundingClientRect().height;
+          setMiniHeaderHeight((p) => (Math.abs(p - mh) > 0.5 ? mh : p));
+        }
+      });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    node.querySelectorAll<HTMLElement>('[data-wid]').forEach((el) => ro.observe(el));
+    const head = node.querySelector<HTMLElement>('[data-mhead]');
+    if (head) ro.observe(head);
+    const miniHead = node.querySelector<HTMLElement>('[data-mhead-mini]');
+    if (miniHead) ro.observe(miniHead);
+
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      document.fonts.ready.then(() => measure());
+    }
+
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [items, header]);
+
+  // 해설지 측정
+  const hasExplanations = useMemo(
+    () =>
+      items.some((it) =>
+        it.blanks.some((b) => b.grammarPoint.trim() || b.explanation.trim())
+      ),
+    [items]
+  );
+
+  useLayoutEffect(() => {
+    if (!hasExplanations) return;
+    const node = explMeasureRef.current;
+    if (!node) return;
+
+    let raf = 0;
+    const measure = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const next: Record<string, number> = {};
+        node.querySelectorAll<HTMLElement>('[data-eid]').forEach((el) => {
+          next[el.dataset.eid!] = el.getBoundingClientRect().height;
+        });
+        setExplHeights((prev) => {
+          const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+          for (const k of keys) {
+            if (Math.abs((prev[k] ?? 0) - (next[k] ?? 0)) > 0.5) return next;
+          }
+          return prev;
+        });
+
+        const head = node.querySelector<HTMLElement>('[data-ahead]');
+        if (head) {
+          const hh = head.getBoundingClientRect().height;
+          setAnswerHeaderH((p) => (Math.abs(p - hh) > 0.5 ? hh : p));
+        }
+      });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    node.querySelectorAll<HTMLElement>('[data-eid]').forEach((el) => ro.observe(el));
+    const head = node.querySelector<HTMLElement>('[data-ahead]');
+    if (head) ro.observe(head);
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      document.fonts.ready.then(() => measure());
+    }
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [items, hasExplanations]);
+
+  // 페이지네이션 (단일 컬럼, 각 item 통째)
+  const itemPages = useMemo<WorksheetItem[][]>(() => {
+    if (items.length === 0) return [];
+    const ITEM_GAP = 6 * MM_TO_PX;
+    const fullW = PAPER_W_PX - PAD_X_MM * 2 * MM_TO_PX;
+    void fullW;
+    const firstAvail = COL_FULL_H_PX - headerHeight - FOOTER_PX - SAFETY_MARGIN_PX;
+    const restAvail = COL_FULL_H_PX - miniHeaderHeight - FOOTER_PX - SAFETY_MARGIN_PX;
+
+    const pages: WorksheetItem[][] = [];
+    let current: WorksheetItem[] = [];
+    let used = 0;
+    let pageIdx = 0;
+
+    for (const it of items) {
+      const h = itemHeights[`w-${it.id}`] ?? 80;
+      const avail = pageIdx === 0 ? firstAvail : restAvail;
+      const gap = current.length === 0 ? 0 : ITEM_GAP;
+      if (used + gap + h <= avail) {
+        current.push(it);
+        used += gap + h;
+      } else {
+        if (current.length > 0) pages.push(current);
+        current = [it];
+        used = h;
+        pageIdx++;
+      }
+    }
+    if (current.length > 0) pages.push(current);
+    return pages;
+  }, [items, itemHeights, headerHeight, miniHeaderHeight]);
+
+  // 해설지 페이지네이션
+  const explPages = useMemo<WorksheetItem[][]>(() => {
+    if (!hasExplanations) return [];
+    const ITEM_GAP = 5 * MM_TO_PX;
+    const firstAvail = COL_FULL_H_PX - answerHeaderH - FOOTER_PX - SAFETY_MARGIN_PX;
+    const restAvail = COL_FULL_H_PX - miniHeaderHeight - FOOTER_PX - SAFETY_MARGIN_PX;
+
+    const pages: WorksheetItem[][] = [];
+    let current: WorksheetItem[] = [];
+    let used = 0;
+    let pageIdx = 0;
+
+    for (const it of items) {
+      const h = explHeights[`e-${it.id}`] ?? 80;
+      const avail = pageIdx === 0 ? firstAvail : restAvail;
+      const gap = current.length === 0 ? 0 : ITEM_GAP;
+      if (used + gap + h <= avail) {
+        current.push(it);
+        used += gap + h;
+      } else {
+        if (current.length > 0) pages.push(current);
+        current = [it];
+        used = h;
+        pageIdx++;
+      }
+    }
+    if (current.length > 0) pages.push(current);
+    return pages;
+  }, [items, explHeights, answerHeaderH, miniHeaderHeight, hasExplanations]);
+
+  const totalPages = itemPages.length + explPages.length;
+
+  // 빈칸 마커 매핑 (저장된 blank의 marker 그대로 사용)
+  const getMarkerMap = (item: WorksheetItem): Record<string, string> => {
+    return Object.fromEntries(item.blanks.map((b) => [b.id, b.marker]));
+  };
+
+  return (
+    <main className="paper-stage" ref={stageRef}>
+      <div className="paper-stage-bar">
+        <div className="paper-stage-bar-left">
+          <span className="paper-stage-label">
+            A4 · 워크시트 · {worksheetType === 'grammar' ? '어법' : '내용'}
+          </span>
+          <span className="paper-stage-pages">
+            총 <strong>{Math.max(totalPages, 1)}</strong>페이지
+          </span>
+        </div>
+        <button
+          className="paper-print-btn"
+          onClick={() => window.print()}
+          title="인쇄 / PDF 저장 (Ctrl+P)"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          인쇄 / PDF 저장
+        </button>
+      </div>
+
+      {/* 측정 레이어 */}
+      <div className="measure-layer" aria-hidden="true" ref={measureRef}>
+        <div data-mhead style={{ width: PAPER_W_PX - PAD_X_MM * 2 * MM_TO_PX }}>
+          <PaperHeader header={header} />
+        </div>
+        <div
+          data-mhead-mini
+          style={{ width: PAPER_W_PX - PAD_X_MM * 2 * MM_TO_PX }}
+        >
+          <PaperHeaderMini header={header} />
+        </div>
+        <div style={{ width: PAPER_W_PX - PAD_X_MM * 2 * MM_TO_PX }}>
+          {items.map((it, idx) => (
+            <div data-wid={`w-${it.id}`} key={it.id}>
+              <WorksheetItemView
+                item={it}
+                num={idx + 1}
+                markersById={getMarkerMap(it)}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 해설지 측정 레이어 */}
+      {hasExplanations && (
+        <div className="measure-layer" aria-hidden="true" ref={explMeasureRef}>
+          <div data-ahead style={{ width: PAPER_W_PX - PAD_X_MM * 2 * MM_TO_PX }}>
+            <AnswerHeader header={header} />
+          </div>
+          <div style={{ width: PAPER_W_PX - PAD_X_MM * 2 * MM_TO_PX }}>
+            {items.map((it, idx) => (
+              <div data-eid={`e-${it.id}`} key={it.id}>
+                <WorksheetExplanationView item={it} num={idx + 1} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="paper-stack">
+        {items.length === 0 ? (
+          <WorksheetEmptyPage header={header} scale={scale} />
+        ) : (
+          <>
+            {itemPages.map((page, i) => (
+              <WorksheetPaperPage
+                key={`p-${i}`}
+                items={page}
+                allItems={items}
+                pageIndex={i}
+                totalPages={totalPages}
+                header={header}
+                scale={scale}
+                isFirst={i === 0}
+              />
+            ))}
+            {explPages.map((page, i) => (
+              <WorksheetExplanationPage
+                key={`e-${i}`}
+                items={page}
+                allItems={items}
+                pageIndex={itemPages.length + i}
+                totalPages={totalPages}
+                header={header}
+                scale={scale}
+                isFirst={i === 0}
+              />
+            ))}
+          </>
+        )}
+      </div>
+    </main>
+  );
+}
+
+function WorksheetEmptyPage({
+  header,
+  scale,
+}: {
+  header: ExamHeader;
+  scale: number;
+}) {
+  return (
+    <div
+      className="paper-frame"
+      style={{ width: PAPER_W_PX * scale, height: PAPER_H_PX * scale }}
+    >
+      <div className="paper" style={{ transform: `scale(${scale})` }}>
+        <span className="corner tl" />
+        <span className="corner tr" />
+        <span className="corner bl" />
+        <span className="corner br" />
+        <div className="paper-inner">
+          <PaperHeader header={header} />
+          <div className="ws-empty">
+            <div className="ws-empty-icon">
+              <svg width="60" height="60" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <div className="ws-empty-text">
+              좌측 패널에서 첫 번째 문장을 추가하면
+              <br />
+              여기 워크시트가 만들어집니다.
+            </div>
+          </div>
+          <footer className="paper-footer">
+            <span className="paper-footer-academy">{header.academyName}</span>
+            <span className="paper-footer-pageno">1 / 1</span>
+          </footer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WorksheetPaperPage({
+  items,
+  allItems,
+  pageIndex,
+  totalPages,
+  header,
+  scale,
+  isFirst,
+}: {
+  items: WorksheetItem[];
+  allItems: WorksheetItem[];
+  pageIndex: number;
+  totalPages: number;
+  header: ExamHeader;
+  scale: number;
+  isFirst: boolean;
+}) {
+  return (
+    <div
+      className="paper-frame"
+      style={{ width: PAPER_W_PX * scale, height: PAPER_H_PX * scale }}
+    >
+      <div className="paper" style={{ transform: `scale(${scale})` }}>
+        <span className="corner tl" />
+        <span className="corner tr" />
+        <span className="corner bl" />
+        <span className="corner br" />
+        <div className="paper-inner">
+          {isFirst ? (
+            <PaperHeader header={header} />
+          ) : (
+            <PaperHeaderMini header={header} />
+          )}
+          <div className="ws-body">
+            {items.map((it) => {
+              const num = allItems.indexOf(it) + 1;
+              const markersById = Object.fromEntries(
+                it.blanks.map((b) => [b.id, b.marker])
+              );
+              return (
+                <WorksheetItemView
+                  key={it.id}
+                  item={it}
+                  num={num}
+                  markersById={markersById}
+                />
+              );
+            })}
+          </div>
+          <footer className="paper-footer">
+            <span className="paper-footer-academy">{header.academyName}</span>
+            <span className="paper-footer-pageno">
+              {pageIndex + 1} / {totalPages}
+            </span>
+          </footer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WorksheetItemView({
+  item,
+  num,
+  markersById,
+}: {
+  item: WorksheetItem;
+  num: number;
+  markersById: Record<string, string>;
+}) {
+  const tokens = parseSentence(item.englishSentence);
+  return (
+    <article className="ws-item">
+      <header className="ws-item-head">
+        <span className="ws-item-num">[{num}]</span>
+        {item.koreanTranslation && (
+          <p className="ws-item-korean">{item.koreanTranslation}</p>
+        )}
+      </header>
+
+      <div className="ws-item-english">
+        {tokens.map((t, i) => {
+          if (t.type === 'text') return <span key={i}>{t.text}</span>;
+          const marker = markersById[t.blankId!] ?? '?';
+          return (
+            <span key={i} className="ws-blank">
+              <span className="ws-blank-marker">{marker}</span>
+              <span className="ws-blank-line" />
+            </span>
+          );
+        })}
+      </div>
+
+      {item.blanks.length > 0 && (
+        <div className="ws-item-blanks">
+          {item.blanks.map((b) => (
+            <div key={b.id} className="ws-item-blank-row">
+              <span className="ws-item-blank-marker">{b.marker}</span>
+              <span className="ws-item-blank-fields">
+                <span className="ws-item-blank-field">
+                  단어:&nbsp;
+                  <span className="ws-item-blank-write" />
+                </span>
+                <span className="ws-item-blank-sep">/</span>
+                <span className="ws-item-blank-field">
+                  어법:&nbsp;
+                  <span className="ws-item-blank-write" />
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </article>
+  );
+}
+
+// 해설지 페이지
+function WorksheetExplanationPage({
+  items,
+  allItems,
+  pageIndex,
+  totalPages,
+  header,
+  scale,
+  isFirst,
+}: {
+  items: WorksheetItem[];
+  allItems: WorksheetItem[];
+  pageIndex: number;
+  totalPages: number;
+  header: ExamHeader;
+  scale: number;
+  isFirst: boolean;
+}) {
+  return (
+    <div
+      className="paper-frame"
+      style={{ width: PAPER_W_PX * scale, height: PAPER_H_PX * scale }}
+    >
+      <div className="paper" style={{ transform: `scale(${scale})` }}>
+        <span className="corner tl" />
+        <span className="corner tr" />
+        <span className="corner bl" />
+        <span className="corner br" />
+        <div className="paper-inner">
+          {isFirst ? (
+            <AnswerHeader header={header} />
+          ) : (
+            <PaperHeaderMini header={header} />
+          )}
+          <div className="ws-expl-body">
+            {items.map((it) => {
+              const num = allItems.indexOf(it) + 1;
+              return (
+                <WorksheetExplanationView key={it.id} item={it} num={num} />
+              );
+            })}
+          </div>
+          <footer className="paper-footer">
+            <span className="paper-footer-academy">{header.academyName}</span>
+            <span className="paper-footer-pageno">
+              {pageIndex + 1} / {totalPages}
+            </span>
+          </footer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WorksheetExplanationView({
+  item,
+  num,
+}: {
+  item: WorksheetItem;
+  num: number;
+}) {
+  const meaningfulBlanks = item.blanks.filter(
+    (b) => b.answer || b.grammarPoint || b.explanation
+  );
+  if (meaningfulBlanks.length === 0) return null;
+  return (
+    <article className="ws-expl-item">
+      <header className="ws-expl-item-head">
+        <span className="ws-expl-item-num">[{num}]</span>
+      </header>
+      <div className="ws-expl-blanks">
+        {meaningfulBlanks.map((b) => (
+          <div key={b.id} className="ws-expl-blank">
+            <div className="ws-expl-blank-head">
+              <span className="ws-expl-marker">{b.marker}</span>
+              <span className="ws-expl-answer">{b.answer || '—'}</span>
+              {b.grammarPoint && (
+                <>
+                  <span className="ws-expl-em-dash">—</span>
+                  <span className="ws-expl-point">{b.grammarPoint}</span>
+                </>
+              )}
+            </div>
+            {b.explanation && (
+              <p className="ws-expl-text">{b.explanation}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </article>
   );
 }
