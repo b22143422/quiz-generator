@@ -2331,6 +2331,7 @@ function WorksheetGrammarPanel({
     blankWorksheetComposer
   );
   const [listExpanded, setListExpanded] = useState(false);
+  const [answersExpanded, setAnswersExpanded] = useState(false);
 
   // 영문장 입력 textarea ref (커서 위치 + selection 감지)
   const sentenceRef = useRef<HTMLTextAreaElement>(null);
@@ -2588,31 +2589,7 @@ function WorksheetGrammarPanel({
                     ×
                   </button>
                 </div>
-                <div className="cp-blank-fields">
-                  <div className="cp-blank-field">
-                    <label>어법명</label>
-                    <input
-                      className="cp-input"
-                      value={b.grammarPoint}
-                      placeholder="예: 사역동사 let + O + 동사원형"
-                      onChange={(e) =>
-                        updateBlank(b.id, { grammarPoint: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="cp-blank-field">
-                    <label>해설</label>
-                    <textarea
-                      className="cp-textarea cp-blank-explanation"
-                      value={b.explanation}
-                      placeholder="자세한 해설 입력"
-                      onChange={(e) =>
-                        updateBlank(b.id, { explanation: e.target.value })
-                      }
-                      rows={3}
-                    />
-                  </div>
-                </div>
+                
               </div>
             ))}
           </div>
@@ -2705,7 +2682,132 @@ function WorksheetGrammarPanel({
             </ul>
           ))}
       </section>
+
+      {/* ───────── 04 답지 작성 (어법명 + 해설) ───────── */}
+      <section className="cp-section">
+        <button
+          className="cp-section-head cp-section-head-toggle"
+          onClick={() => setAnswersExpanded((v) => !v)}
+          aria-expanded={answersExpanded}
+        >
+          <span className="cp-section-num">04</span>
+          <h3>답지 작성</h3>
+          <span className="cp-list-total">어법명 · 해설</span>
+          <Chevron open={answersExpanded} />
+        </button>
+
+        {answersExpanded &&
+          (items.length === 0 ? (
+            <div className="cp-empty">먼저 문장을 추가해 주세요.</div>
+          ) : (
+            <div className="cp-ws-answer-list">
+              {items.map((it, idx) => (
+                <WorksheetAnswerCard
+                  key={it.id}
+                  item={it}
+                  num={idx + 1}
+                  onUpdate={onUpdate}
+                />
+              ))}
+            </div>
+          ))}
+      </section>
     </>
+  );
+}
+
+// 답지 작성 카드 (한 문장의 모든 빈칸을 한 번에 편집)
+function WorksheetAnswerCard({
+  item,
+  num,
+  onUpdate,
+}: {
+  item: WorksheetItem;
+  num: number;
+  onUpdate: (id: string, patch: Partial<WorksheetItem>) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const updateBlank = (blankId: string, patch: Partial<WorksheetBlank>) => {
+    onUpdate(item.id, {
+      blanks: item.blanks.map((b) =>
+        b.id === blankId ? { ...b, ...patch } : b
+      ),
+    });
+  };
+
+  const filledCount = item.blanks.filter(
+    (b) => b.grammarPoint.trim() || b.explanation.trim()
+  ).length;
+  const totalCount = item.blanks.length;
+  const isComplete = filledCount === totalCount && totalCount > 0;
+
+  return (
+    <div className={`cp-ws-answer-card ${expanded ? 'expanded' : ''}`}>
+      <button
+        className="cp-ws-answer-card-head"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <span className="cp-tag tag-ws">
+          어<em>{num}</em>
+        </span>
+        <span className="cp-ws-answer-card-preview">
+          {item.koreanTranslation || item.englishSentence || (
+            <i>(내용 없음)</i>
+          )}
+        </span>
+        <span
+          className={`cp-ws-answer-status ${isComplete ? 'complete' : ''}`}
+        >
+          {filledCount} / {totalCount}
+        </span>
+        <Chevron open={expanded} />
+      </button>
+
+      {expanded && (
+        <div className="cp-ws-answer-card-body">
+          {item.blanks.length === 0 ? (
+            <div className="cp-empty">이 문장에는 빈칸이 없습니다.</div>
+          ) : (
+            item.blanks.map((b) => (
+              <div key={b.id} className="cp-ws-answer-blank">
+                <div className="cp-ws-answer-blank-head">
+                  <span className="cp-blank-marker">{b.marker}</span>
+                  <span className="cp-ws-answer-blank-answer">
+                    정답: <strong>{b.answer || '—'}</strong>
+                  </span>
+                </div>
+                <div className="cp-blank-fields">
+                  <div className="cp-blank-field">
+                    <label>어법명</label>
+                    <input
+                      className="cp-input"
+                      value={b.grammarPoint}
+                      placeholder="예: 사역동사 let + O + 동사원형"
+                      onChange={(e) =>
+                        updateBlank(b.id, { grammarPoint: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="cp-blank-field">
+                    <label>해설</label>
+                    <textarea
+                      className="cp-textarea cp-blank-explanation"
+                      value={b.explanation}
+                      placeholder="자세한 해설 입력"
+                      onChange={(e) =>
+                        updateBlank(b.id, { explanation: e.target.value })
+                      }
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
