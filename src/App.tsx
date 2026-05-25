@@ -2574,22 +2574,22 @@ function WorksheetGrammarPanel({
               <div key={b.id} className="cp-blank-card">
                 <div className="cp-blank-card-head">
                   <span className="cp-blank-marker">{b.marker}</span>
-                  <span className="cp-blank-answer-label">정답:</span>
-                  <input
-                    className="cp-input cp-blank-answer"
-                    value={b.answer}
-                    onChange={(e) => updateBlank(b.id, { answer: e.target.value })}
-                    placeholder="정답 단어/표현"
-                  />
+                  <span className="cp-blank-info-text">
+                    빈칸 위치 표시
+                    {b.answer && (
+                      <em className="cp-blank-source-hint">
+                        (원본: {b.answer})
+                      </em>
+                    )}
+                  </span>
                   <button
                     className="cp-blank-remove"
                     onClick={() => removeBlank(b.id)}
-                    title="이 빈칸 제거 (원래 단어로 복원)"
+                    title="이 빈칸 제거"
                   >
                     ×
                   </button>
                 </div>
-                
               </div>
             ))}
           </div>
@@ -2737,7 +2737,9 @@ function WorksheetAnswerCard({
   };
 
   const filledCount = item.blanks.filter(
-    (b) => b.grammarPoint.trim() || b.explanation.trim()
+    (b) =>
+      b.answer.trim() &&
+      (b.grammarPoint.trim() || b.explanation.trim())
   ).length;
   const totalCount = item.blanks.length;
   const isComplete = filledCount === totalCount && totalCount > 0;
@@ -2773,11 +2775,22 @@ function WorksheetAnswerCard({
               <div key={b.id} className="cp-ws-answer-blank">
                 <div className="cp-ws-answer-blank-head">
                   <span className="cp-blank-marker">{b.marker}</span>
-                  <span className="cp-ws-answer-blank-answer">
-                    정답: <strong>{b.answer || '—'}</strong>
+                  <span className="cp-ws-answer-blank-hint">
+                    빈칸 {b.marker} 정답 정보
                   </span>
                 </div>
                 <div className="cp-blank-fields">
+                  <div className="cp-blank-field">
+                    <label>정답</label>
+                    <input
+                      className="cp-input cp-input-answer"
+                      value={b.answer}
+                      placeholder="예: take"
+                      onChange={(e) =>
+                        updateBlank(b.id, { answer: e.target.value })
+                      }
+                    />
+                  </div>
                   <div className="cp-blank-field">
                     <label>어법명</label>
                     <input
