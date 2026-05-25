@@ -3352,3 +3352,119 @@ textarea {
   vertical-align: 2px;
   line-height: 1.2;
 }
+/* ───────── 워크시트 답지 작성 카드 ───────── */
+.cp-ws-answer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-ws-answer-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  transition: border 0.15s ease;
+}
+
+.cp-ws-answer-card:hover {
+  border-color: var(--border-strong);
+}
+
+.cp-ws-answer-card.expanded {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+.cp-ws-answer-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.cp-ws-answer-card-head:hover {
+  background: var(--surface-2);
+}
+
+.cp-ws-answer-card.expanded .cp-ws-answer-card-head {
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+}
+
+.cp-ws-answer-card-preview {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--text);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.cp-ws-answer-card-preview i {
+  color: var(--text-3);
+  font-style: italic;
+}
+
+.cp-ws-answer-status {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  background: var(--bg);
+  color: var(--text-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.cp-ws-answer-status.complete {
+  color: var(--success);
+  border-color: var(--success);
+  background: var(--success-soft);
+}
+
+.cp-ws-answer-card-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cp-ws-answer-blank {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px;
+}
+
+.cp-ws-answer-blank-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.cp-ws-answer-blank-answer {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-3);
+  letter-spacing: 0.02em;
+}
+
+.cp-ws-answer-blank-answer strong {
+  color: var(--text);
+  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  margin-left: 4px;
+}
