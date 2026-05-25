@@ -3338,3 +3338,17 @@ textarea {
   word-break: keep-all;
   letter-spacing: -0.005em;
 }
+/* 워크시트 타이틀 옆 라벨 박스 */
+.paper-header-ws-label {
+  display: inline-block;
+  margin-left: 4mm;
+  padding: 1.2mm 3.5mm;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 9pt;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 1.2mm;
+  vertical-align: 2px;
+  line-height: 1.2;
+}
