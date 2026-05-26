@@ -1576,14 +1576,14 @@ function ControlPanel({
 
         {libraryExpanded && (
           <>
-            <button
+           <button
               className="cp-btn-primary cp-library-save-btn"
               onClick={onSavePaper}
-              disabled={questions.length === 0}
+              disabled={questions.length === 0 && worksheetItems.length === 0}
               title={
-                questions.length === 0
-                  ? '문제를 1개 이상 추가하면 저장할 수 있습니다'
-                  : '현재 시험지를 라이브러리에 저장합니다'
+                questions.length === 0 && worksheetItems.length === 0
+                  ? '1개 이상 추가하면 저장할 수 있습니다'
+                  : '현재 작업물을 라이브러리에 저장합니다'
               }
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
