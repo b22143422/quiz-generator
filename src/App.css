@@ -2224,18 +2224,43 @@ textarea {
 .q-passage {
   margin-left: 5mm;
   padding: 2.5mm 3mm;
-  border: 0.5px solid var(--ink-3);
+  border-left: 0.5px solid var(--ink-3);
+  border-right: 0.5px solid var(--ink-3);
   background: rgba(0, 0, 0, 0.012);
   font-size: 9pt;
   line-height: 1.7;
   color: var(--ink);
   word-break: keep-all;
   white-space: pre-wrap;
-  border-radius: 1mm;
   text-align: justify;
   text-justify: inter-word;
   hyphens: auto;
   -webkit-hyphens: auto;
+}
+
+/* 쪼개진 본문 조각들이 하나의 박스처럼 보이게 */
+.q-passage-first {
+  border-top: 0.5px solid var(--ink-3);
+  border-radius: 1mm 1mm 0 0;
+  padding-top: 2.5mm;
+}
+
+.q-passage-mid {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.q-passage-last {
+  border-bottom: 0.5px solid var(--ink-3);
+  border-radius: 0 0 1mm 1mm;
+  padding-bottom: 2.5mm;
+}
+
+/* 첫 조각이면서 마지막 조각인 경우 (짧은 본문) */
+.q-passage-first.q-passage-last {
+  border: 0.5px solid var(--ink-3);
+  border-radius: 1mm;
+  padding: 2.5mm 3mm;
 }
 
 .q-passage strong {
