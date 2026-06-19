@@ -319,6 +319,43 @@ function isPlainTextEmpty(html: string): boolean {
   return stripped.length === 0;
 }
 
+// 긴 지문을 문장(또는 줄바꿈) 단위로 쪼개서 페이지를 넘어 흐를 수 있게 만든다.
+// 각 조각은 독립 블록이 되어 컬럼/페이지 경계에서 자연스럽게 분리된다.
+function splitPassageIntoSegments(html: string): string[] {
+  if (!html) return [];
+
+  // 1) 줄바꿈(\n, <br>, </p>)을 기준으로 1차 분리
+  const normalized = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>\s*<p[^>]*>/gi, '\n')
+    .replace(/<\/?p[^>]*>/gi, '');
+
+  const lines = normalized.split('\n');
+
+  // 2) 각 줄을 문장 단위(. ! ?)로 더 쪼갬 — 단, 태그 안 망가지게 단순 분리
+  const segments: string[] = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    // 문장 끝(. ! ?) 뒤 공백을 기준으로 분리하되, 마침표는 유지
+    const sentences = trimmed.match(/[^.!?]+[.!?]*\s*/g);
+    if (sentences && sentences.length > 1) {
+      // 2문장씩 묶어서 너무 잘게 쪼개지지 않게
+      for (let i = 0; i < sentences.length; i += 2) {
+        const chunk = sentences
+          .slice(i, i + 2)
+          .join('')
+          .trim();
+        if (chunk) segments.push(chunk);
+      }
+    } else {
+      segments.push(trimmed);
+    }
+  }
+
+  return segments.length > 0 ? segments : [html];
+}
+
 // ═══════════════════════════════════════════════════════
 //  INITIAL
 // ═══════════════════════════════════════════════════════
@@ -2912,12 +2949,12 @@ function buildBlocks(
       const endNum = end + 1;
 
       if (group) {
-        // 공통 발문 + (공통 본문) 을 한 묶음 블록으로 추가
+        // 공통 발문 블록 (본문과 분리)
         blocks.push({
           id: `${groupId}-header`,
           groupId: `gr-${groupId}`,
           kind: 'group-header',
-          pullPriority: 0,
+          pullPriority: 10, // 본문 첫 조각과 묶임
           render: () => (
             <CommonGroupHeader
               group={group}
@@ -2926,6 +2963,26 @@ function buildBlocks(
             />
           ),
         });
+
+        // 공통 본문을 문장 단위로 쪼개서 별도 블록들로 추가
+        if (group.hasCommonPassage && !isPlainTextEmpty(group.commonPassage)) {
+          const segs = splitPassageIntoSegments(group.commonPassage);
+          segs.forEach((seg, si) => {
+            blocks.push({
+              id: `${groupId}-cpassage-${si}`,
+              groupId: `gr-${groupId}`,
+              kind: 'group-passage',
+              pullPriority: si === 0 ? 10 : 0,
+              render: () => (
+                <PassageView
+                  html={seg}
+                  isFirst={si === 0}
+                  isLast={si === segs.length - 1}
+                />
+              ),
+            });
+          });
+        }
       }
 
       // 그룹 내 각 문제 블록 추가
@@ -2959,16 +3016,24 @@ function pushQuestionBlocks(
     render: () => <QuestionStem q={q} number={num} inGroup={inGroup} />,
   });
 
-  if (q.hasPassage && !isPlainTextEmpty(q.passage)) {
-    blocks.push({
-      id: `${q.id}-passage`,
-      groupId: q.id,
-      kind: 'q-passage',
-      pullPriority: 10, // 발문이랑 같이 묶임
-      render: () => <PassageView html={q.passage} />,
+if (q.hasPassage && !isPlainTextEmpty(q.passage)) {
+    const segs = splitPassageIntoSegments(q.passage);
+    segs.forEach((seg, si) => {
+      blocks.push({
+        id: `${q.id}-passage-${si}`,
+        groupId: q.id,
+        kind: 'q-passage',
+        pullPriority: si === 0 ? 10 : 0, // 첫 조각만 발문과 묶음, 나머지는 자유롭게 흐름
+        render: () => (
+          <PassageView
+            html={seg}
+            isFirst={si === 0}
+            isLast={si === segs.length - 1}
+          />
+        ),
+      });
     });
   }
-
   if (q.type === 'written') {
     if (q.conditions.length > 0) {
       blocks.push({
@@ -3646,9 +3711,6 @@ function CommonGroupHeader({
           }}
         />
       </div>
-      {group.hasCommonPassage && !isPlainTextEmpty(group.commonPassage) && (
-        <PassageView html={group.commonPassage} />
-      )}
     </div>
   );
 }
@@ -3680,10 +3742,25 @@ function QuestionStem({
   );
 }
 
-function PassageView({ html }: { html: string }) {
+function PassageView({
+  html,
+  isFirst = true,
+  isLast = true,
+}: {
+  html: string;
+  isFirst?: boolean;
+  isLast?: boolean;
+}) {
+  const cls = [
+    'q-passage',
+    isFirst ? 'q-passage-first' : 'q-passage-mid',
+    isLast ? 'q-passage-last' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
   return (
     <div
-      className="q-passage"
+      className={cls}
       dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(html) }}
     />
   );
