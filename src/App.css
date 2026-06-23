@@ -2247,7 +2247,13 @@ textarea {
 
 .q-passage-mid {
   padding-top: 0;
-  padding-bottom: 0;
+  padding-bottom: 2.5mm;
+}
+
+/* mid/last 조각은 윗쪽 단락과 자연스럽게 이어지도록 위 여백만 살림 */
+.q-passage-mid,
+.q-passage-last {
+  padding-top: 0;
 }
 
 .q-passage-last {
