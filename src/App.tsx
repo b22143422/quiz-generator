@@ -29,13 +29,20 @@ interface OxSentence {
   explanation: string;
 }
 
+// 영작 조건: 일반 텍스트 조건 또는 제시어(주어진 단어) 조건
+interface Condition {
+  id: string;
+  text: string;       // 조건 설명 문구
+  words?: string;     // 제시어 (있으면 제시어 조건, 슬래시 등 포함한 원문 그대로)
+}
+
 interface Question {
   id: string;
   type: QuestionType;
   questionText: string;       // 발문 (위지윅 HTML)
   hasPassage: boolean;
   passage: string;            // 본문 (위지윅 HTML)
-  conditions: string[];       // 영작 조건 (서술형 전용)
+  conditions: Condition[];    // 영작 조건 (서술형 전용)
   choices: string[];          // 객관식 선택지 [5]
   answerLines: number;        // 서술형 답란 줄 수
   answer: string;             // 정답 (객관식: ① 등 / 서술형: text)
@@ -124,7 +131,22 @@ function normalizeQuestion(q: any): Question {
     questionText: q?.questionText ?? '',
     hasPassage: !!q?.hasPassage,
     passage: q?.passage ?? '',
-    conditions: Array.isArray(q?.conditions) ? q.conditions : [],
+    conditions: Array.isArray(q?.conditions)
+      ? q.conditions.map((c: any) =>
+          typeof c === 'string'
+            ? {
+                id: `c${Date.now()}_${Math.random().toString(36).slice(2)}`,
+                text: c,
+              }
+            : {
+                id:
+                  c?.id ??
+                  `c${Date.now()}_${Math.random().toString(36).slice(2)}`,
+                text: c?.text ?? '',
+                words: c?.words,
+              }
+        )
+      : [],
     choices:
       Array.isArray(q?.choices) && q.choices.length === 5
         ? q.choices
@@ -324,36 +346,20 @@ function isPlainTextEmpty(html: string): boolean {
 function splitPassageIntoSegments(html: string): string[] {
   if (!html) return [];
 
-  // 1) 줄바꿈(\n, <br>, </p>)을 기준으로 1차 분리
+  // 사용자가 입력한 줄바꿈(엔터/<br>/문단)만 기준으로 분리.
+  // 문장 단위 강제 분할은 하지 않는다 → 평소엔 통짜 박스, 페이지 넘칠 때만 단락 경계에서 분리.
   const normalized = html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>\s*<p[^>]*>/gi, '\n')
     .replace(/<\/?p[^>]*>/gi, '');
 
-  const lines = normalized.split('\n');
-
-  // 2) 각 줄을 문장 단위(. ! ?)로 더 쪼갬 — 단, 태그 안 망가지게 단순 분리
-  const segments: string[] = [];
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    // 문장 끝(. ! ?) 뒤 공백을 기준으로 분리하되, 마침표는 유지
-    const sentences = trimmed.match(/[^.!?]+[.!?]*\s*/g);
-    if (sentences && sentences.length > 1) {
-      // 2문장씩 묶어서 너무 잘게 쪼개지지 않게
-      for (let i = 0; i < sentences.length; i += 2) {
-        const chunk = sentences
-          .slice(i, i + 2)
-          .join('')
-          .trim();
-        if (chunk) segments.push(chunk);
-      }
-    } else {
-      segments.push(trimmed);
-    }
-  }
+  const segments = normalized
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
 
   return segments.length > 0 ? segments : [html];
+}
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3140,10 +3146,20 @@ function paginate(
     return pulled;
   };
 
-  const place = (block: Block, allowPull: boolean): void => {
+const place = (block: Block, allowPull: boolean): void => {
     const h = heights[block.id] ?? 0;
     const isContinuation = lastGroupId === block.groupId;
-    const gap = used === 0 ? 0 : isContinuation ? BLOCK_GAP_PX : GROUP_GAP_PX;
+    // 같은 본문(passage)이 쪼개진 조각끼리는 간격 0 (하나의 박스처럼 보이게)
+    const isPassageSeg =
+      block.kind === 'q-passage' || block.kind === 'group-passage';
+    const gap =
+      used === 0
+        ? 0
+        : isPassageSeg && isContinuation
+          ? 0
+          : isContinuation
+            ? BLOCK_GAP_PX
+            : GROUP_GAP_PX;
     const proposed = used + gap + h;
 
     if (used === 0 || proposed <= available()) {
