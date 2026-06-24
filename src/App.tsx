@@ -344,22 +344,14 @@ function isPlainTextEmpty(html: string): boolean {
 // 긴 지문을 문장(또는 줄바꿈) 단위로 쪼개서 페이지를 넘어 흐를 수 있게 만든다.
 // 각 조각은 독립 블록이 되어 컬럼/페이지 경계에서 자연스럽게 분리된다.
 function splitPassageIntoSegments(html: string): string[] {
-  if (!html) return [];
+  if (!html || isPlainTextEmpty(html)) return [];
 
-  // 사용자가 입력한 줄바꿈(엔터/<br>/문단)만 기준으로 분리.
-  // 문장 단위 강제 분할은 하지 않는다 → 평소엔 통짜 박스, 페이지 넘칠 때만 단락 경계에서 분리.
-  const normalized = html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>\s*<p[^>]*>/gi, '\n')
-    .replace(/<\/?p[^>]*>/gi, '');
-
-  const segments = normalized
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-
-  return segments.length > 0 ? segments : [html];
-}
+  // 2026-06 패치:
+  // 기존 로직은 <br>/<p>를 기준으로 지문을 여러 블록으로 쪼갔기 때문에
+  // 사용자가 의도하지 않은 단락 분할과 박스 테두리 끊김이 발생했다.
+  // 지문은 기본적으로 하나의 박스로 유지한다.
+  // 아주 긴 지문은 페이지 계산 로직이 블록 단위로 다음 칸/페이지에 배치한다.
+  return [html];
 }
 
 // ═══════════════════════════════════════════════════════
@@ -791,7 +783,7 @@ interface ComposerState {
   questionText: string;
   hasPassage: boolean;
   passage: string;
-  conditions: string[];
+  conditions: Condition[];
   choices: string[];
   answerLines: number;
   answer: string;
@@ -889,9 +881,9 @@ function ControlPanel({
     const cleanedOx = composer.oxSentences.filter(
       (s) => s.text.trim() !== ''
     );
-    // 빈 조건 제거
+    // 빈 조건 제거: 일반 조건은 text, 제시어 조건은 words 중 하나라도 있으면 유지
     const cleanedConditions = composer.conditions.filter(
-      (c) => c.trim() !== ''
+      (c) => c.text.trim() !== '' || (c.words ?? '').trim() !== ''
     );
 
     const payload: Omit<Question, 'id'> = {
@@ -925,12 +917,38 @@ function ControlPanel({
 
   // 조건 관리
   const addCondition = () =>
-    setComposer((s) => ({ ...s, conditions: [...s.conditions, ''] }));
-  const updateCondition = (i: number, v: string) =>
     setComposer((s) => ({
       ...s,
-      conditions: s.conditions.map((c, idx) => (idx === i ? v : c)),
+      conditions: [
+        ...s.conditions,
+        {
+          id: `c${Date.now()}_${Math.random().toString(36).slice(2)}`,
+          text: '',
+        },
+      ],
     }));
+
+  const addWordCondition = () =>
+    setComposer((s) => ({
+      ...s,
+      conditions: [
+        ...s.conditions,
+        {
+          id: `c${Date.now()}_${Math.random().toString(36).slice(2)}`,
+          text: '다음 영단어를 포함할 것',
+          words: '',
+        },
+      ],
+    }));
+
+  const updateCondition = (i: number, patch: Partial<Condition>) =>
+    setComposer((s) => ({
+      ...s,
+      conditions: s.conditions.map((c, idx) =>
+        idx === i ? { ...c, ...patch } : c
+      ),
+    }));
+
   const removeCondition = (i: number) =>
     setComposer((s) => ({
       ...s,
@@ -1277,7 +1295,17 @@ function ControlPanel({
                   onChange={(e) => {
                     if (e.target.checked) {
                       if (composer.conditions.length === 0) {
-                        setComposer({ ...composer, conditions: [''] });
+                        setComposer({
+                          ...composer,
+                          conditions: [
+                            {
+                              id: `c${Date.now()}_${Math.random()
+                                .toString(36)
+                                .slice(2)}`,
+                              text: '',
+                            },
+                          ],
+                        });
                       }
                     } else {
                       setComposer({ ...composer, conditions: [] });
@@ -1304,14 +1332,37 @@ function ControlPanel({
               {composer.conditions.length > 0 && (
                 <div className="cp-conditions-list">
                   {composer.conditions.map((c, i) => (
-                    <div key={i} className="cp-condition-row">
+                    <div
+                      key={c.id}
+                      className={`cp-condition-row ${
+                        c.words !== undefined ? 'cp-condition-word-row' : ''
+                      }`}
+                    >
                       <span className="cp-condition-num">{i + 1}.</span>
-                      <input
-                        className="cp-input"
-                        value={c}
-                        placeholder={`조건 ${i + 1}`}
-                        onChange={(e) => updateCondition(i, e.target.value)}
-                      />
+                      <div className="cp-condition-inputs">
+                        <input
+                          className="cp-input"
+                          value={c.text}
+                          placeholder={
+                            c.words !== undefined
+                              ? '제시어 조건 설명'
+                              : `조건 ${i + 1}`
+                          }
+                          onChange={(e) =>
+                            updateCondition(i, { text: e.target.value })
+                          }
+                        />
+                        {c.words !== undefined && (
+                          <input
+                            className="cp-input cp-word-input"
+                            value={c.words}
+                            placeholder="눈에 띄게 표시할 영단어 입력"
+                            onChange={(e) =>
+                              updateCondition(i, { words: e.target.value })
+                            }
+                          />
+                        )}
+                      </div>
                       <button
                         className="cp-condition-del"
                         onClick={() => removeCondition(i)}
@@ -1321,17 +1372,33 @@ function ControlPanel({
                       </button>
                     </div>
                   ))}
-                  <button className="cp-condition-add" onClick={addCondition}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M12 5v14M5 12h14"
-                        stroke="currentColor"
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    조건 추가
-                  </button>
+                  <div className="cp-condition-add-row">
+                    <button className="cp-condition-add" onClick={addCondition}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M12 5v14M5 12h14"
+                          stroke="currentColor"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      일반 조건 추가
+                    </button>
+                    <button
+                      className="cp-condition-add cp-condition-add-word"
+                      onClick={addWordCondition}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M12 5v14M5 12h14"
+                          stroke="currentColor"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      제시어 조건 추가
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -2403,7 +2470,9 @@ function WorksheetGrammarPanel({
     for (const t of tokens) {
       if (t.type === 'blank' && t.blankId) idsInOrder.push(t.blankId);
     }
-    const byId = new Map(composer.blanks.map((b) => [b.id, b]));
+    const byId = new Map<string, WorksheetBlank>(
+      composer.blanks.map((b) => [b.id, b] as [string, WorksheetBlank])
+    );
     const ordered: WorksheetBlank[] = [];
     idsInOrder.forEach((id, i) => {
       const b = byId.get(id);
@@ -3782,14 +3851,22 @@ function PassageView({
   );
 }
 
-function ConditionsView({ conditions }: { conditions: string[] }) {
+function ConditionsView({ conditions }: { conditions: Condition[] }) {
   if (conditions.length === 0) return null;
   return (
     <div className="q-conditions">
       <span className="q-conditions-label">조건</span>
       <ol className="q-conditions-list">
-        {conditions.map((c, i) => (
-          <li key={i}>{c}</li>
+        {conditions.map((c) => (
+          <li
+            key={c.id}
+            className={c.words !== undefined ? 'q-condition-word-item' : ''}
+          >
+            <span className="q-condition-text">{c.text}</span>
+            {c.words !== undefined && c.words.trim() !== '' && (
+              <span className="q-condition-word">{c.words}</span>
+            )}
+          </li>
         ))}
       </ol>
     </div>
