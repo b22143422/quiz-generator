@@ -341,7 +341,30 @@ function isPlainTextEmpty(html: string): boolean {
     .trim();
   return stripped.length === 0;
 }
+// HTML을 길이 계산용 일반 텍스트 줄 배열로 변환한다.
+// 렌더링용 분할 함수가 아니라, 긴 지문 여부 판단에만 사용한다.
+function htmlToParagraphText(html: string): string[] {
+  if (!html) return [];
 
+  const text = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>\s*<p[^>]*>/gi, '\n')
+    .replace(/<\/div>\s*<div[^>]*>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+
+  const lines = text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return lines.length > 0 ? lines : [text.trim()].filter(Boolean);
+}
 // 긴 지문을 페이지 밖으로 넘기지 않기 위한 안전 분할 기준.
 // 평소에는 사용자가 입력한 문단을 유지하고, 한 문단이 지나치게 길 때만
 // 문장 경계 → 단어 경계 순으로 나눈다.
