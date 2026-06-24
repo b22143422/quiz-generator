@@ -11,8 +11,7 @@ import './App.css';
 // ═══════════════════════════════════════════════════════
 //  EMBEDDED LOGO (옵티멈 로고 — 투명 배경 PNG)
 // ═══════════════════════════════════════════════════════
-const DEFAULT_LOGO =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAABCCAMAAAAR8f8nAAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAAAP1BMVEX9/f0hFxXkAhKtqqhXUlB4cnCRjYvPtLSDfXpCPDncVGBGQD3gN0zkh4/Dwb6FgX4AAAAAAAAAAAAAAAAAAAB8tu1aAAAAEHRSTlMA//9g4LKKUaP/2/v+kECeZfDj1AAAA89JREFUeNrtm9t6gyAMgLXhINbq+7/tWtutAgln3Cm52TekIfwGCBCHgYXl38ptuGmmUCp6uexyYxRFMl8+ZWYYJXK5MMGa8Xs5CvOoGMBMsHYAP4TX4qoRzB5YDZCXEVRgPIhiD8wWRQLkObAW4MIeWAeQ48BKgFYguDCqfIC8F64FyKcxtQDvCPk8sA7gn46Bd8mpnBVI/3HHEV+9NhJQsvAGDF+17br3x+IIULwxgyu45gEmcRdH7fYoExMEjXIL9wnD168Q/XuZkFCMz+q17zoWk3t7xilAh+9bpKtjF79hW8OEaVW4USPm/tLVf+cDV9uqXb8Z/cIskVivgQQ4kbRDAEUKwOvxX/NkYgi78gG6RjzXsivd70TBe330LMssSRCqBmgAqaLIN1vgga4q7fyiaN6GcYwSHGMim3igL6h1UAowT381vwPBKMDXa2sOEH/cDmBIf934tQnGAY59AIbeVguAwfFUtvyi80FCo+JEgGNngBkuqNJUpTQKJwJcOwOENgP47c1jogueBRA6A1TNHBAbLYGaIYCmIcCtM0BZOAM+tjIgkJfheRtScY/zR+GUPnZIZtchhfMMtwD8lyDBbWsqBSgI/bIQoPWrKxrYCAQgHgGJ+GmMiADUiL8LpK1SgM+5zUT1y5IY0BChod+l99Ee9gIqAALVvltxKt4Lp+mXJXtgCPSTWqI2xJQKgMTZha+2EKDO2QTmToGCGtpAtEiZUgFQBwBCOw/sA1CmAhRhIr088McDtLp6DQCUDJA9sPccqL9pDqwHqNoC1Ps99nLrtgrLHwMQiGCkCuAcy6IA3LOS40CIBtLbWQCxcHirBDjHE3lGLJJW0Z0IJO9Exo4Ahbe7VL6ZNQAv8Uwef6cISsQOPj5vKwWO1emF3KQ8AyBxDlIB0M7Fu51yGkPoXLsAhH4AH43ebIDLKeeBBMA+HjikmF7ugXNSQnLjE+lTPRC/zk44rEgDuKRldIskKhkOiI2sTh44JIyd7gDb3sqdDBDiBvUews3uhSH0SnoBDA3itRagTv2opUlmwhTMtOkGkCYIQy3AIf2bDBO9WbHibRHmR+VhdQFIrIICbzEPoE7/qmpCbDB0dpaMXaOeCBBdBtXQAuAxEoymxEvk2o0gYgL5gYS6VIAr0tw1ety0yoDpVYcJOueTlsPOzM/U9Hr0VdsQR2fPPNNH1uekgvf8K1amX4ml979vjfoloH2FIJ+N+W1F9GtHv9OonudlTv+iYKVSpDGXGDLyqf+9oABZGCAD/I0ADeNgD2QP/G1y/NyHPxRkYfl2+QCamC5YGy4leQAAAABJRU5ErkJggg==';
+const DEFAULT_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAABCCAMAAAAR8f8nAAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAAAP1BMVEX9/f0hFxXkAhKtqqhXUlB4cnCRjYvPtLSDfXpCPDncVGBGQD3gN0zkh4/Dwb6FgX4AAAAAAAAAAAAAAAAAAAB8tu1aAAAAEHRSTlMA//9g4LKKUaP/2/v+kECeZfDj1AAAA89JREFUeNrtm9t6gyAMgLXhINbq+7/tWtutAgln3Cm52TekIfwGCBCHgYXl38ptuGmmUCp6uexyYxRFMl8+ZWYYJXK5MMGa8Xs5CvOoGMBMsHYAP4TX4qoRzB5YDZCXEVRgPIhiD8wWRQLkObAW4MIeWAeQ48BKgFYguDCqfIC8F64FyKcxtQDvCPk8sA7gn46Bd8mpnBVI/3HHEV+9NhJQsvAGDF+17br3x+IIULwxgyu45gEmcRdH7fYoExMEjXIL9wnD168Q/XuZkFCMz+q17zoWk3t7xilAh+9bpKtjF79hW8OEaVW4USPm/tLVf+cDV9uqXb8Z/cIskVivgQQ4kbRDAEUKwOvxX/NkYgi78gG6RjzXsivd70TBe330LMssSRCqBmgAqaLIN1vgga4q7fyiaN6GcYwSHGMim3igL6h1UAowT381vwPBKMDXa2sOEH/cDmBIf934tQnGAY59AIbeVguAwfFUtvyi80FCo+JEgGNngBkuqNJUpTQKJwJcOwOENgP47c1jogueBRA6A1TNHBAbLYGaIYCmIcCtM0BZOAM+tjIgkJfheRtScY/zR+GUPnZIZtchhfMMtwD8lyDBbWsqBSgI/bIQoPWrKxrYCAQgHgGJ+GmMiADUiL8LpK1SgM+5zUT1y5IY0BChod+l99Ee9gIqAALVvltxKt4Lp+mXJXtgCPSTWqI2xJQKgMTZha+2EKDO2QTmToGCGtpAtEiZUgFQBwBCOw/sA1CmAhRhIr088McDtLp6DQCUDJA9sPccqL9pDqwHqNoC1Ps99nLrtgrLHwMQiGCkCuAcy6IA3LOS40CIBtLbWQCxcHirBDjHE3lGLJJW0Z0IJO9Exo4Ahbe7VL6ZNQAv8Uwef6cISsQOPj5vKwWO1emF3KQ8AyBxDlIB0M7Fu51yGkPoXLsAhH4AH43ebIDLKeeBBMA+HjikmF7ugXNSQnLjE+lTPRC/zk44rEgDuKRldIskKhkOiI2sTh44JIyd7gDb3sqdDBDiBvUews3uhSH0SnoBDA3itRagTv2opUlmwhTMtOkGkCYIQy3AIf2bDBO9WbHibRHmR+VhdQFIrIICbzEPoE7/qmpCbDB0dpaMXaOeCBBdBtXQAuAxEoymxEvk2o0gYgL5gYS6VIAr0tw1ety0yoDpVYcJOueTlsPOzM/U9Hr0VdsQR2fPPNNH1uekgvf8K1amX4ml979vjfoloH2FIJ+N+W1F9GtHv9OonudlTv+iYKVSpDGXGDLyqf+9oABZGCAD/I0ADeNgD2QP/G1y/NyHPxRkYfl2+QCamC5YGy4leQAAAABJRU5ErkJggg==';
 
 // ═══════════════════════════════════════════════════════
 //  TYPES
@@ -69,7 +68,7 @@ interface WorksheetBlank {
 interface WorksheetItem {
   id: string;
   koreanTranslation: string;      // 한국어 해석
-  englishSentence: string;        // 영어 문장 (빈칸은 {{marker:blank-id}} 토큰)
+  englishSentence: string;        // 영어 문장 (빈칸은 ⟦BLANK:id⟧ 토큰)
   blanks: WorksheetBlank[];
 }
 
@@ -105,7 +104,6 @@ const PAPER_H_PX = PAPER_H_MM * MM_TO_PX;
 const PAD_X_MM = 12;
 const PAD_TOP_MM = 11;
 const PAD_BOTTOM_MM = 11;
-const CONTENT_W_PX = (PAPER_W_MM - PAD_X_MM * 2) * MM_TO_PX;
 const COL_GAP_MM = 10;
 const COL_W_MM = (PAPER_W_MM - PAD_X_MM * 2 - COL_GAP_MM) / 2;
 const COL_W_PX = COL_W_MM * MM_TO_PX;
@@ -341,35 +339,11 @@ function isPlainTextEmpty(html: string): boolean {
     .trim();
   return stripped.length === 0;
 }
-// HTML을 길이 계산용 일반 텍스트 줄 배열로 변환한다.
-// 렌더링용 분할 함수가 아니라, 긴 지문 여부 판단에만 사용한다.
-function htmlToParagraphText(html: string): string[] {
-  if (!html) return [];
 
-  const text = html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>\s*<p[^>]*>/gi, '\n')
-    .replace(/<\/div>\s*<div[^>]*>/gi, '\n')
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
-
-  const lines = text
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  return lines.length > 0 ? lines : [text.trim()].filter(Boolean);
-}
-// 긴 지문을 페이지 밖으로 넘기지 않기 위한 안전 분할 기준.
-// 평소에는 사용자가 입력한 문단을 유지하고, 한 문단이 지나치게 길 때만
-// 문장 경계 → 단어 경계 순으로 나눈다.
 // 지문은 더 이상 임의 분할하지 않습니다.
 // 사용자가 입력한 원본 HTML을 하나의 박스로 유지합니다.
+// 줄바꿈(<br>/문단)은 sanitizeRichHtml이 \n으로 보존하고,
+// .q-passage의 white-space: pre-wrap이 화면에 그대로 반영합니다.
 
 // ═══════════════════════════════════════════════════════
 //  INITIAL
@@ -872,7 +846,7 @@ function ControlPanel({
           questionText: q.questionText,
           hasPassage: q.hasPassage,
           passage: q.passage,
-          conditions: [...q.conditions],
+          conditions: q.conditions.map((c) => ({ ...c })),
           choices: [...q.choices],
           answerLines: q.answerLines,
           answer: q.answer,
@@ -1258,7 +1232,7 @@ function ControlPanel({
             </span>
             <span className="cp-checkbox-text">
               주어진 지문 / 본문 포함
-              <em>본문에도 굵게·밑줄 적용 가능</em>
+              <em>입력한 줄바꿈(엔터) 그대로 출력 · 굵게·밑줄 가능</em>
             </span>
           </label>
           {composer.hasPassage && (
@@ -2392,10 +2366,6 @@ function RichTextDisplay({ html }: { html: string }) {
 // ═══════════════════════════════════════════════════════
 const BLANK_MARKERS = ['ⓐ', 'ⓑ', 'ⓒ', 'ⓓ', 'ⓔ', 'ⓕ', 'ⓖ', 'ⓗ', 'ⓘ', 'ⓙ'];
 
-// 영문장 텍스트에서 마커 토큰 처리
-// 토큰 형식: ⟦BLANK:blank-id⟧
-// 캔버스/표시 시: 해당 위치에 ⓐ_________ 등 마커+밑줄 합체
-
 function makeBlankToken(blankId: string): string {
   return `⟦BLANK:${blankId}⟧`;
 }
@@ -2460,11 +2430,9 @@ function WorksheetGrammarPanel({
   const [listExpanded, setListExpanded] = useState(false);
   const [answersExpanded, setAnswersExpanded] = useState(false);
 
-  // 영문장 입력 textarea ref (커서 위치 + selection 감지)
   const sentenceRef = useRef<HTMLTextAreaElement>(null);
   const [hasSelection, setHasSelection] = useState(false);
 
-  // 편집 모드 진입 시 데이터 로드
   useEffect(() => {
     if (editingId) {
       const item = items.find((it) => it.id === editingId);
@@ -2479,9 +2447,7 @@ function WorksheetGrammarPanel({
     }
   }, [editingId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 영문장 내 블랭크 마커 재정렬 (1, 2, 3번째 등장 순서대로 ⓐⓑⓒ)
   const reorderedBlanks = useMemo(() => {
-    // englishSentence에 등장하는 순서대로 blanks 재정렬
     const tokens = parseSentence(composer.englishSentence);
     const idsInOrder: string[] = [];
     for (const t of tokens) {
@@ -2523,7 +2489,6 @@ function WorksheetGrammarPanel({
     reset();
   };
 
-  // 선택된 단어를 빈칸으로 만들기
   const makeBlankFromSelection = () => {
     const ta = sentenceRef.current;
     if (!ta) return;
@@ -2539,15 +2504,12 @@ function WorksheetGrammarPanel({
       return;
     }
 
-    // 새 빈칸 ID 생성
     const blankId = `b${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const token = makeBlankToken(blankId);
 
-    // 선택 영역의 원래 문장 양옆 공백 유지하면서 토큰으로 교체
     const before = composer.englishSentence.slice(0, start);
     const after = composer.englishSentence.slice(end);
 
-    // 선택 영역의 leading/trailing 공백을 보존 (이게 자연스러움)
     const origSelected = composer.englishSentence.slice(start, end);
     const lead = origSelected.match(/^\s*/)?.[0] ?? '';
     const trail = origSelected.match(/\s*$/)?.[0] ?? '';
@@ -2555,7 +2517,7 @@ function WorksheetGrammarPanel({
 
     const newBlank: WorksheetBlank = {
       id: blankId,
-      marker: '', // reorderedBlanks에서 재할당
+      marker: '',
       answer: selected,
       grammarPoint: '',
       explanation: '',
@@ -2569,7 +2531,6 @@ function WorksheetGrammarPanel({
     setHasSelection(false);
   };
 
-  // 빈칸 제거 (영문장에서 토큰 빼고 원래 단어로 복원)
   const removeBlank = (blankId: string) => {
     const blank = composer.blanks.find((b) => b.id === blankId);
     if (!blank) return;
@@ -2581,8 +2542,6 @@ function WorksheetGrammarPanel({
       blanks: composer.blanks.filter((b) => b.id !== blankId),
     });
   };
-
-  
 
   const handleSelectionChange = () => {
     const ta = sentenceRef.current;
@@ -2671,7 +2630,6 @@ function WorksheetGrammarPanel({
             onKeyUp={handleSelectionChange}
             rows={4}
           />
-          {/* 미리보기 */}
           {composer.englishSentence && (
             <div className="cp-sentence-preview">
               <span className="cp-sentence-preview-label">미리보기</span>
@@ -2687,7 +2645,6 @@ function WorksheetGrammarPanel({
           )}
         </div>
 
-        {/* 빈칸 목록 + 어법명/해설 입력 */}
         {reorderedBlanks.length > 0 && (
           <div className="cp-blanks-list">
             <div className="cp-blanks-list-head">
@@ -2840,7 +2797,6 @@ function WorksheetGrammarPanel({
   );
 }
 
-// 답지 작성 카드 (한 문장의 모든 빈칸을 한 번에 편집)
 function WorksheetAnswerCard({
   item,
   num,
@@ -2995,29 +2951,17 @@ function useDisplayScale(stageRef: React.RefObject<HTMLDivElement | null>) {
   return scale;
 }
 
+// 한 문제 = 하나의 블록. 절대 페이지 중간에서 쪼개지 않는다.
+// 공통 발문+공통 지문도 하나의 블록(그룹 헤더)으로 묶는다.
 type BlockKind =
   | 'group'       // 공통 발문 + 공통 본문을 하나로 묶은 블록
   | 'question';   // 문제 전체를 하나로 묶은 블록
 
 interface Block {
   id: string;
-  groupId: string;
+  groupId: string;  // 같은 공통그룹/문제 묶음 식별 (gr-xxx = 공통그룹 소속)
   kind: BlockKind;
-  // true이면 한 페이지의 양쪽 컬럼 전체 폭을 사용한다.
-  // 긴 공통 지문/긴 개별 지문은 분할하지 않고 한 페이지 안에 들어가도록 폭을 넓힌다.
-  wide?: boolean;
   render: () => React.ReactNode;
-}
-
-function plainTextLength(html: string): number {
-  return htmlToParagraphText(html).join('\n').length;
-}
-
-function shouldUseWideQuestion(q: Question): boolean {
-  if (!q.hasPassage || isPlainTextEmpty(q.passage)) return false;
-  // 지문이 긴 문제는 2단 컬럼에 억지로 넣으면 다음 페이지로 쪼개지기 쉬우므로
-  // 한 페이지 전체 폭을 사용한다. 본문 자체는 절대 분할하지 않는다.
-  return plainTextLength(q.passage) >= 520;
 }
 
 function buildBlocks(
@@ -3052,8 +2996,6 @@ function buildBlocks(
           id: `${groupId}-group`,
           groupId: `gr-${groupId}`,
           kind: 'group',
-          // 공통 지문은 발문+지문 전체를 하나의 큰 박스로 유지하기 위해 full width 사용
-          wide: group.hasCommonPassage && !isPlainTextEmpty(group.commonPassage),
           render: () => (
             <CommonGroupBlock
               group={group}
@@ -3066,12 +3008,26 @@ function buildBlocks(
 
       for (let i = cursor; i <= end; i++) {
         const qq = questions[i];
-        pushQuestionBlocks(blocks, qq, numberMap.get(qq.id)!, true);
+        blocks.push({
+          id: `${qq.id}-full`,
+          groupId: group ? `gr-${groupId}` : qq.id,
+          kind: 'question',
+          render: () => (
+            <QuestionBlock q={qq} number={numberMap.get(qq.id)!} inGroup={true} />
+          ),
+        });
       }
 
       cursor = end + 1;
     } else {
-      pushQuestionBlocks(blocks, q, numberMap.get(q.id)!, false);
+      blocks.push({
+        id: `${q.id}-full`,
+        groupId: q.id,
+        kind: 'question',
+        render: () => (
+          <QuestionBlock q={q} number={numberMap.get(q.id)!} inGroup={false} />
+        ),
+      });
       cursor++;
     }
   }
@@ -3079,26 +3035,19 @@ function buildBlocks(
   return { blocks, numberMap };
 }
 
-function pushQuestionBlocks(
-  blocks: Block[],
-  q: Question,
-  num: number,
-  inGroup: boolean
-) {
-  blocks.push({
-    id: `${q.id}-full`,
-    groupId: q.id,
-    kind: 'question',
-    wide: shouldUseWideQuestion(q),
-    render: () => <QuestionBlock q={q} number={num} inGroup={inGroup} />,
-  });
-}
-
 interface PageData {
+  // wide: 컬럼 하나에 안 들어가는 거대한 블록을 페이지 전체폭으로 단독 배치
   wide: Block[];
   cols: [Block[], Block[]];
 }
 
+// ─── 스마트 하이브리드 페이지네이션 ───
+// 원칙:
+//  1) 한 블록(문제/공통그룹)은 절대 쪼개지 않는다.
+//  2) 기본은 2단. 블록을 좌→우 컬럼에 순서대로 흘려넣되, 한 컬럼에 안 들어가면
+//     다음 컬럼 → 다음 페이지로 "통째" 이동.
+//  3) 한 컬럼 높이(availCol)보다도 큰 블록만 예외적으로 전체폭(wide) 단독 배치.
+//     이때도 본문은 분할하지 않고 그대로 둔다(잘리면 자체 스크롤 없이 표시).
 function paginate(
   blocks: Block[],
   heights: Record<string, number>,
@@ -3115,13 +3064,15 @@ function paginate(
   const headerForPage = (p: number) =>
     p === 0 ? firstPageHeaderH : miniHeaderH;
 
-  const available = (): number =>
+  const availCol = (): number =>
     COL_FULL_H_PX - headerForPage(pageIdx) - FOOTER_PX - SAFETY_MARGIN_PX;
 
-  const hasContent = (page: PageData = current): boolean =>
-    page.wide.length > 0 || page.cols[0].length > 0 || page.cols[1].length > 0;
+  const hasContent = (): boolean =>
+    current.wide.length > 0 ||
+    current.cols[0].length > 0 ||
+    current.cols[1].length > 0;
 
-  const startNextPage = () => {
+  const pushPage = () => {
     if (hasContent()) pages.push(current);
     current = { wide: [], cols: [[], []] };
     pageIdx++;
@@ -3130,30 +3081,21 @@ function paginate(
     lastGroupId = null;
   };
 
-  const placeWide = (block: Block) => {
-    // wide 블록은 한 페이지를 통째로 쓴다.
-    // 공통 지문/긴 지문 문제를 쪼개지 않기 위한 의도적 처리.
-    if (hasContent()) startNextPage();
-    current.wide.push(block);
-    startNextPage();
-  };
-
   const placeColumn = (block: Block): void => {
-    if (current.wide.length > 0) startNextPage();
-
     const h = heights[block.id] ?? 0;
     const isContinuation = lastGroupId === block.groupId;
-    const gap =
-      used === 0 ? 0 : isContinuation ? BLOCK_GAP_PX : GROUP_GAP_PX;
+    const gap = used === 0 ? 0 : isContinuation ? BLOCK_GAP_PX : GROUP_GAP_PX;
     const proposed = used + gap + h;
 
-    if (used === 0 || proposed <= available()) {
+    // 현재 컬럼에 들어가면 배치
+    if (used === 0 || proposed <= availCol()) {
       current.cols[colIdx].push(block);
       used = used === 0 ? h : proposed;
       lastGroupId = block.groupId;
       return;
     }
 
+    // 왼쪽 컬럼이 꽉 찼으면 오른쪽 컬럼으로
     if (colIdx === 0) {
       colIdx = 1;
       used = 0;
@@ -3162,17 +3104,28 @@ function paginate(
       return;
     }
 
-    startNextPage();
+    // 양쪽 컬럼 다 찼으면 다음 페이지로 (블록은 통째로 이동)
+    pushPage();
     placeColumn(block);
   };
 
   for (const block of blocks) {
-    if (block.wide) placeWide(block);
-    else placeColumn(block);
+    const h = heights[block.id] ?? 0;
+
+    // 한 컬럼 높이보다도 큰 블록만 전체폭 단독 배치.
+    // (긴 공통 지문/긴 개별 지문) — 본문을 쪼개지 않기 위한 유일한 예외.
+    if (h > availCol()) {
+      if (hasContent()) pushPage();
+      current.wide.push(block);
+      pushPage();
+      continue;
+    }
+
+    placeColumn(block);
   }
 
   if (hasContent()) pages.push(current);
-  return pages;
+  return pages.length > 0 ? pages : [{ wide: [], cols: [[], []] }];
 }
 
 function ExamPaper({
@@ -3192,6 +3145,8 @@ function ExamPaper({
     [questions, groups]
   );
 
+  // 블록 높이는 "컬럼 폭" 기준으로 측정한다.
+  // (실제 2단 배치 시의 높이를 알아야 페이지네이션이 정확함)
   const [heights, setHeights] = useState<Record<string, number>>({});
   const [headerHeight, setHeaderHeight] = useState(160);
   const [miniHeaderHeight, setMiniHeaderHeight] = useState(40);
@@ -3280,7 +3235,6 @@ function ExamPaper({
     });
   }, [questions]);
 
-  // 답지 페이지네이션 (2단 구성, 항목별 높이 기반)
   const [answerHeights, setAnswerHeights] = useState<Record<string, number>>(
     {}
   );
@@ -3338,17 +3292,14 @@ function ExamPaper({
     };
   }, [questions, hasAnyAnswer]);
 
-  // 답지 항목을 2단으로 나누어 페이지 단위로 묶기
   const answerPages = useMemo<Question[][]>(() => {
     if (!hasAnyAnswer) return [];
 
-    // 첫 페이지는 ANSWER KEY 헤더가 있어서 사용 가능 공간이 다름
     const firstPageAvailH =
       COL_FULL_H_PX - answerHeaderH - FOOTER_PX - SAFETY_MARGIN_PX;
     const nextPageAvailH =
       COL_FULL_H_PX - miniHeaderHeight - FOOTER_PX - SAFETY_MARGIN_PX;
 
-    // 2단이므로 한 페이지에 들어갈 수 있는 총 높이 = avail * 2 (각 컬럼 = avail)
     const pages: Question[][] = [];
     let current: Question[] = [];
     let usedCol1 = 0;
@@ -3360,23 +3311,20 @@ function ExamPaper({
       p === 0 ? firstPageAvailH : nextPageAvailH;
 
     for (const q of questions) {
-      const h = answerHeights[`a-${q.id}`] ?? 60; // 미측정시 안전한 기본값
+      const h = answerHeights[`a-${q.id}`] ?? 60;
       const avail = availForPage(pageIdx);
 
-      // 현재 컬럼에 들어가는지 체크
       const target = currentCol === 0 ? usedCol1 : usedCol2;
       if (target + h <= avail) {
         current.push(q);
         if (currentCol === 0) usedCol1 += h;
         else usedCol2 += h;
       } else if (currentCol === 0) {
-        // 우측 컬럼으로
         currentCol = 1;
         if (h <= avail) {
           current.push(q);
           usedCol2 = h;
         } else {
-          // 우측에도 안 들어감 → 다음 페이지
           pages.push(current);
           current = [q];
           usedCol1 = h;
@@ -3385,7 +3333,6 @@ function ExamPaper({
           pageIdx++;
         }
       } else {
-        // 우측 컬럼도 꽉참 → 다음 페이지
         pages.push(current);
         current = [q];
         usedCol1 = h;
@@ -3428,6 +3375,7 @@ function ExamPaper({
         </button>
       </div>
 
+      {/* 측정 레이어: 블록은 컬럼 폭 기준으로 측정 */}
       <div className="measure-layer" aria-hidden="true" ref={measureRef}>
         <div data-mhead style={{ width: PAPER_W_PX - PAD_X_MM * 2 * MM_TO_PX }}>
           <PaperHeader header={header} />
@@ -3440,19 +3388,13 @@ function ExamPaper({
         </div>
         <div className="measure-col" style={{ width: COL_W_PX }}>
           {blocks.map((b) => (
-            <div
-              data-mid={b.id}
-              key={b.id}
-              className="measure-item"
-              style={{ width: b.wide ? CONTENT_W_PX : COL_W_PX }}
-            >
+            <div data-mid={b.id} key={b.id} className="measure-item">
               {b.render()}
             </div>
           ))}
         </div>
       </div>
 
-      {/* 답지 항목 측정용 레이어 (2단 컬럼 너비 기준) */}
       {hasAnyAnswer && (
         <div
           className="measure-layer"
@@ -3521,6 +3463,7 @@ function PaperPage({
   scale: number;
 }) {
   const isFirst = pageIndex === 0;
+  const isWidePage = page.wide.length > 0;
   return (
     <div
       className="paper-frame"
@@ -3539,7 +3482,7 @@ function PaperPage({
             <PaperHeaderMini header={header} />
           )}
 
-          {page.wide.length > 0 ? (
+          {isWidePage ? (
             <div className="paper-wide">
               <Column blocks={page.wide} />
             </div>
@@ -3564,7 +3507,7 @@ function PaperPage({
 }
 
 function Column({ blocks }: { blocks: Block[] }) {
-  // 같은 groupId의 연속 블록을 article로 묶음
+  // 같은 groupId의 연속 블록을 article로 묶음 (공통그룹 헤더 + 그 문제들)
   const groups: { groupId: string; items: Block[] }[] = [];
   for (const b of blocks) {
     const last = groups[groups.length - 1];
@@ -3793,6 +3736,8 @@ function QuestionStem({
   );
 }
 
+// 본문: 사용자가 입력한 그대로 한 박스. 분할 없음.
+// 줄바꿈은 sanitizeRichHtml이 \n으로 보존하고 white-space: pre-wrap이 반영.
 function PassageView({ html }: { html: string }) {
   return (
     <div className="q-passage">
@@ -4017,7 +3962,6 @@ function WorksheetPaper({
   const [miniHeaderHeight, setMiniHeaderHeight] = useState(40);
   const [answerHeaderH, setAnswerHeaderH] = useState(60);
 
-  // 측정
   useLayoutEffect(() => {
     const node = measureRef.current;
     if (!node) return;
@@ -4068,7 +4012,6 @@ function WorksheetPaper({
     };
   }, [items, header]);
 
-  // 해설지 측정
   const hasExplanations = useMemo(
     () =>
       items.some((it) =>
@@ -4119,12 +4062,9 @@ function WorksheetPaper({
     };
   }, [items, hasExplanations]);
 
-  // 페이지네이션 (단일 컬럼, 각 item 통째)
   const itemPages = useMemo<WorksheetItem[][]>(() => {
     if (items.length === 0) return [];
     const ITEM_GAP = 6 * MM_TO_PX;
-    const fullW = PAPER_W_PX - PAD_X_MM * 2 * MM_TO_PX;
-    void fullW;
     const firstAvail = COL_FULL_H_PX - headerHeight - FOOTER_PX - SAFETY_MARGIN_PX;
     const restAvail = COL_FULL_H_PX - miniHeaderHeight - FOOTER_PX - SAFETY_MARGIN_PX;
 
@@ -4151,7 +4091,6 @@ function WorksheetPaper({
     return pages;
   }, [items, itemHeights, headerHeight, miniHeaderHeight]);
 
-  // 해설지 페이지네이션
   const explPages = useMemo<WorksheetItem[][]>(() => {
     if (!hasExplanations) return [];
     const ITEM_GAP = 5 * MM_TO_PX;
@@ -4183,7 +4122,6 @@ function WorksheetPaper({
 
   const totalPages = itemPages.length + explPages.length;
 
-  // 빈칸 마커 매핑 (저장된 blank의 marker 그대로 사용)
   const getMarkerMap = (item: WorksheetItem): Record<string, string> => {
     return Object.fromEntries(item.blanks.map((b) => [b.id, b.marker]));
   };
@@ -4217,7 +4155,6 @@ function WorksheetPaper({
         </button>
       </div>
 
-      {/* 측정 레이어 */}
       <div className="measure-layer" aria-hidden="true" ref={measureRef}>
         <div data-mhead style={{ width: PAPER_W_PX - PAD_X_MM * 2 * MM_TO_PX }}>
           <PaperHeader header={header} />
@@ -4241,7 +4178,6 @@ function WorksheetPaper({
         </div>
       </div>
 
-      {/* 해설지 측정 레이어 */}
       {hasExplanations && (
         <div className="measure-layer" aria-hidden="true" ref={explMeasureRef}>
           <div data-ahead style={{ width: PAPER_W_PX - PAD_X_MM * 2 * MM_TO_PX }}>
@@ -4466,7 +4402,6 @@ function WorksheetItemView({
   );
 }
 
-// 해설지 페이지
 function WorksheetExplanationPage({
   items,
   allItems,
