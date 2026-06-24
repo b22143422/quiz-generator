@@ -345,82 +345,8 @@ function isPlainTextEmpty(html: string): boolean {
 // 긴 지문을 페이지 밖으로 넘기지 않기 위한 안전 분할 기준.
 // 평소에는 사용자가 입력한 문단을 유지하고, 한 문단이 지나치게 길 때만
 // 문장 경계 → 단어 경계 순으로 나눈다.
-const MAX_PASSAGE_SEGMENT_CHARS = 560;
-
-function decodeBasicEntities(text: string): string {
-  return text
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
-}
-
-function htmlToParagraphText(html: string): string[] {
-  const normalized = html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/\s*(p|div|li|h[1-6]|tr|section|article)\s*>/gi, '\n\n')
-    .replace(/<\s*(p|div|li|h[1-6]|tr|section|article)(\s[^>]*)?>/gi, '')
-    .replace(/<[^>]*>/g, '');
-
-  return decodeBasicEntities(normalized)
-    .replace(/\r/g, '')
-    .replace(/[ \t]+/g, ' ')
-    .replace(/[ \t]*\n[ \t]*/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .split(/\n{2,}|\n/g)
-    .map((p) => p.trim())
-    .filter(Boolean);
-}
-
-function splitVeryLongParagraph(text: string): string[] {
-  if (text.length <= MAX_PASSAGE_SEGMENT_CHARS) return [text];
-
-  const sentences = text
-    .replace(/\s+/g, ' ')
-    .split(/(?<=[.!?])\s+(?=[A-Z0-9“"'])/g)
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  const chunks: string[] = [];
-  let cur = '';
-
-  const pushCur = () => {
-    if (cur.trim()) chunks.push(cur.trim());
-    cur = '';
-  };
-
-  const pushWordChunks = (sentence: string) => {
-    const words = sentence.split(/\s+/);
-    for (const word of words) {
-      const next = cur ? `${cur} ${word}` : word;
-      if (next.length > MAX_PASSAGE_SEGMENT_CHARS && cur) pushCur();
-      cur = cur ? `${cur} ${word}` : word;
-    }
-  };
-
-  for (const sentence of sentences.length ? sentences : [text]) {
-    if (sentence.length > MAX_PASSAGE_SEGMENT_CHARS) {
-      pushWordChunks(sentence);
-      continue;
-    }
-
-    const next = cur ? `${cur} ${sentence}` : sentence;
-    if (next.length > MAX_PASSAGE_SEGMENT_CHARS && cur) pushCur();
-    cur = cur ? `${cur} ${sentence}` : sentence;
-  }
-
-  pushCur();
-  return chunks.length ? chunks : [text];
-}
-
-// 지문은 사용자가 입력한 원본을 하나의 박스로 유지한다.
-// 임의 문단/문장 분할 금지. 줄바꿈은 sanitizeRichHtml + CSS white-space: pre-wrap로 반영한다.
-function splitPassageIntoSegments(html: string): string[] {
-  if (!html || isPlainTextEmpty(html)) return [];
-  return [html];
-}
+// 지문은 더 이상 임의 분할하지 않습니다.
+// 사용자가 입력한 원본 HTML을 하나의 박스로 유지합니다.
 
 // ═══════════════════════════════════════════════════════
 //  INITIAL
