@@ -105,6 +105,7 @@ const PAPER_H_PX = PAPER_H_MM * MM_TO_PX;
 const PAD_X_MM = 12;
 const PAD_TOP_MM = 11;
 const PAD_BOTTOM_MM = 11;
+const CONTENT_W_PX = (PAPER_W_MM - PAD_X_MM * 2) * MM_TO_PX;
 const COL_GAP_MM = 10;
 const COL_W_MM = (PAPER_W_MM - PAD_X_MM * 2 - COL_GAP_MM) / 2;
 const COL_W_PX = COL_W_MM * MM_TO_PX;
@@ -414,23 +415,11 @@ function splitVeryLongParagraph(text: string): string[] {
   return chunks.length ? chunks : [text];
 }
 
-// 긴 지문을 페이지/컬럼 단위로 흘려보내기 위한 세그먼트 생성.
-// - 짧은 지문: 하나의 박스 유지
-// - 긴 지문: 입력 문단 기준 유지
-// - 너무 긴 단일 문단: 문장/단어 경계에서만 안전 분할
+// 지문은 사용자가 입력한 원본을 하나의 박스로 유지한다.
+// 임의 문단/문장 분할 금지. 줄바꿈은 sanitizeRichHtml + CSS white-space: pre-wrap로 반영한다.
 function splitPassageIntoSegments(html: string): string[] {
   if (!html || isPlainTextEmpty(html)) return [];
-
-  const paragraphs = htmlToParagraphText(html);
-  const plain = paragraphs.join('\n\n').trim();
-
-  // 짧은 지문은 원본 HTML을 그대로 반환해서 사용자가 넣은 굵게/밑줄을 보존한다.
-  if (plain.length > 0 && plain.length <= MAX_PASSAGE_SEGMENT_CHARS) {
-    return [html];
-  }
-
-  const source = paragraphs.length > 0 ? paragraphs : [sanitizeRichHtml(html)];
-  return source.flatMap(splitVeryLongParagraph);
+  return [html];
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3058,21 +3047,28 @@ function useDisplayScale(stageRef: React.RefObject<HTMLDivElement | null>) {
 }
 
 type BlockKind =
-  | 'group-header'    // 공통 발문 (단독 또는 공통 본문 포함)
-  | 'group-passage'   // 공통 본문 (group-header에 합쳐서 한 덩어리)
-  | 'q-stem'          // 발문 + 본문(있으면) = 한 묶음으로 처리
-  | 'q-passage'       // 개별 본문
-  | 'q-conditions'    // 영작 조건 박스
-  | 'q-choice'        // 객관식 선지 1개
-  | 'q-answer'        // 서술형 답란
-  | 'q-ox';           // OX 전체 (한 덩어리)
+  | 'group'       // 공통 발문 + 공통 본문을 하나로 묶은 블록
+  | 'question';   // 문제 전체를 하나로 묶은 블록
 
 interface Block {
   id: string;
-  groupId: string; // 같은 question id 단위로 묶임 (공통그룹은 그룹id로 묶임)
+  groupId: string;
   kind: BlockKind;
-  pullPriority: number; // 0 = 항상 자유, 높을수록 같은 그룹의 다음 블록과 묶이는 우선순위 높음
+  // true이면 한 페이지의 양쪽 컬럼 전체 폭을 사용한다.
+  // 긴 공통 지문/긴 개별 지문은 분할하지 않고 한 페이지 안에 들어가도록 폭을 넓힌다.
+  wide?: boolean;
   render: () => React.ReactNode;
+}
+
+function plainTextLength(html: string): number {
+  return htmlToParagraphText(html).join('\n').length;
+}
+
+function shouldUseWideQuestion(q: Question): boolean {
+  if (!q.hasPassage || isPlainTextEmpty(q.passage)) return false;
+  // 지문이 긴 문제는 2단 컬럼에 억지로 넣으면 다음 페이지로 쪼개지기 쉬우므로
+  // 한 페이지 전체 폭을 사용한다. 본문 자체는 절대 분할하지 않는다.
+  return plainTextLength(q.passage) >= 520;
 }
 
 function buildBlocks(
@@ -3083,19 +3079,19 @@ function buildBlocks(
   const numberMap = new Map<string, number>();
   questions.forEach((q, i) => numberMap.set(q.id, i + 1));
 
-  // 그룹 블록 정보 (연속된 같은 그룹 처리)
   let cursor = 0;
   while (cursor < questions.length) {
     const q = questions[cursor];
 
-    // 공통 그룹이 시작되는 시점 체크
     if (q.groupId) {
       const groupId = q.groupId;
       const group = groups.find((g) => g.id === groupId);
 
-      // 같은 그룹의 연속 문제 찾기
       let end = cursor;
-      while (end + 1 < questions.length && questions[end + 1].groupId === groupId) {
+      while (
+        end + 1 < questions.length &&
+        questions[end + 1].groupId === groupId
+      ) {
         end++;
       }
 
@@ -3103,56 +3099,22 @@ function buildBlocks(
       const endNum = end + 1;
 
       if (group) {
-        const segs =
-          group.hasCommonPassage && !isPlainTextEmpty(group.commonPassage)
-            ? splitPassageIntoSegments(group.commonPassage)
-            : [];
-
-        // 공통 발문과 지문 첫 조각은 한 블록으로 묶는다.
-        // 그래야 [1~7] 발문만 왼쪽에 남고 지문이 오른쪽으로 떨어지는 현상이 사라진다.
         blocks.push({
-          id: `${groupId}-header`,
+          id: `${groupId}-group`,
           groupId: `gr-${groupId}`,
-          kind: 'group-header',
-          pullPriority: 10,
+          kind: 'group',
+          // 공통 지문은 발문+지문 전체를 하나의 큰 박스로 유지하기 위해 full width 사용
+          wide: group.hasCommonPassage && !isPlainTextEmpty(group.commonPassage),
           render: () => (
-            <>
-              <CommonGroupHeader
-                group={group}
-                startNum={startNum}
-                endNum={endNum}
-              />
-              {segs[0] && (
-                <PassageView
-                  html={segs[0]}
-                  isFirst
-                  isLast={segs.length === 1}
-                />
-              )}
-            </>
+            <CommonGroupBlock
+              group={group}
+              startNum={startNum}
+              endNum={endNum}
+            />
           ),
-        });
-
-        // 남은 지문 조각은 컬럼/페이지 경계에서 이어지는 블록으로 배치한다.
-        segs.slice(1).forEach((seg, idx) => {
-          const si = idx + 1;
-          blocks.push({
-            id: `${groupId}-cpassage-${si}`,
-            groupId: `gr-${groupId}`,
-            kind: 'group-passage',
-            pullPriority: 0,
-            render: () => (
-              <PassageView
-                html={seg}
-                isFirst={false}
-                isLast={si === segs.length - 1}
-              />
-            ),
-          });
         });
       }
 
-      // 그룹 내 각 문제 블록 추가
       for (let i = cursor; i <= end; i++) {
         const qq = questions[i];
         pushQuestionBlocks(blocks, qq, numberMap.get(qq.id)!, true);
@@ -3174,89 +3136,17 @@ function pushQuestionBlocks(
   num: number,
   inGroup: boolean
 ) {
-  const passageSegs =
-    q.hasPassage && !isPlainTextEmpty(q.passage)
-      ? splitPassageIntoSegments(q.passage)
-      : [];
-
-  // 개별 문제도 발문과 지문 첫 조각을 한 블록으로 묶는다.
-  // 긴 지문이 다음 컬럼으로 넘어가더라도 문제 번호만 혼자 남지 않게 한다.
   blocks.push({
-    id: `${q.id}-stem`,
+    id: `${q.id}-full`,
     groupId: q.id,
-    kind: 'q-stem',
-    pullPriority: 10,
-    render: () => (
-      <>
-        <QuestionStem q={q} number={num} inGroup={inGroup} />
-        {passageSegs[0] && (
-          <PassageView
-            html={passageSegs[0]}
-            isFirst
-            isLast={passageSegs.length === 1}
-          />
-        )}
-      </>
-    ),
+    kind: 'question',
+    wide: shouldUseWideQuestion(q),
+    render: () => <QuestionBlock q={q} number={num} inGroup={inGroup} />,
   });
-
-  passageSegs.slice(1).forEach((seg, idx) => {
-    const si = idx + 1;
-    blocks.push({
-      id: `${q.id}-passage-${si}`,
-      groupId: q.id,
-      kind: 'q-passage',
-      pullPriority: 0,
-      render: () => (
-        <PassageView
-          html={seg}
-          isFirst={false}
-          isLast={si === passageSegs.length - 1}
-        />
-      ),
-    });
-  });
-  if (q.type === 'written') {
-    if (q.conditions.length > 0) {
-      blocks.push({
-        id: `${q.id}-cond`,
-        groupId: q.id,
-        kind: 'q-conditions',
-        pullPriority: 10, // 답란이랑 같이
-        render: () => <ConditionsView conditions={q.conditions} />,
-      });
-    }
-    blocks.push({
-      id: `${q.id}-ans`,
-      groupId: q.id,
-      kind: 'q-answer',
-      pullPriority: 10,
-      render: () => <AnswerArea lines={q.answerLines} />,
-    });
-  } else if (q.type === 'multiple-choice') {
-    q.choices.forEach((c, i) => {
-      // 첫 2개 선지는 발문/본문과 묶음 (priority 10), 나머지는 자유 (priority 0)
-      blocks.push({
-        id: `${q.id}-c${i}`,
-        groupId: q.id,
-        kind: 'q-choice',
-        pullPriority: i < 2 ? 10 : 0,
-        render: () => <ChoiceItem choice={c} index={i} />,
-      });
-    });
-  } else if (q.type === 'ox') {
-    // OX는 통째로 한 덩어리
-    blocks.push({
-      id: `${q.id}-ox`,
-      groupId: q.id,
-      kind: 'q-ox',
-      pullPriority: 10,
-      render: () => <OxBlock sentences={q.oxSentences} />,
-    });
-  }
 }
 
 interface PageData {
+  wide: Block[];
   cols: [Block[], Block[]];
 }
 
@@ -3267,7 +3157,7 @@ function paginate(
   miniHeaderH: number
 ): PageData[] {
   const pages: PageData[] = [];
-  let current: PageData = { cols: [[], []] };
+  let current: PageData = { wide: [], cols: [[], []] };
   let pageIdx = 0;
   let colIdx: 0 | 1 = 0;
   let used = 0;
@@ -3279,63 +3169,33 @@ function paginate(
   const available = (): number =>
     COL_FULL_H_PX - headerForPage(pageIdx) - FOOTER_PX - SAFETY_MARGIN_PX;
 
+  const hasContent = (page: PageData = current): boolean =>
+    page.wide.length > 0 || page.cols[0].length > 0 || page.cols[1].length > 0;
+
   const startNextPage = () => {
-    pages.push(current);
-    current = { cols: [[], []] };
+    if (hasContent()) pages.push(current);
+    current = { wide: [], cols: [[], []] };
     pageIdx++;
     colIdx = 0;
     used = 0;
     lastGroupId = null;
   };
 
-  // 같은 group의 "묶음 블록"만 회수 (pullPriority가 높은 것들)
-  // 발문/본문/조건/첫 선지 2개 등을 같이 다음 컬럼/페이지로 이동
-  const pullSameGroupHighPriority = (groupId: string): Block[] => {
-    const pulled: Block[] = [];
-
-    const pullFromCol = (col: Block[]) => {
-      while (col.length > 0) {
-        const last = col[col.length - 1];
-        if (last.groupId === groupId && last.pullPriority >= 10) {
-          pulled.unshift(col.pop()!);
-        } else {
-          break;
-        }
-      }
-    };
-
-    pullFromCol(current.cols[1]);
-    if (colIdx === 1) {
-      // 컬럼0의 끝부분에서도 같은 groupId가 있다면 회수 (좌→우로 이어진 묶음)
-      // 단, 회수 후 컬럼0이 비지 않도록 한다
-      const col0 = current.cols[0];
-      while (col0.length > 0) {
-        const last = col0[col0.length - 1];
-        if (last.groupId === groupId && last.pullPriority >= 10) {
-          pulled.unshift(col0.pop()!);
-        } else {
-          break;
-        }
-      }
-    }
-
-    return pulled;
+  const placeWide = (block: Block) => {
+    // wide 블록은 한 페이지를 통째로 쓴다.
+    // 공통 지문/긴 지문 문제를 쪼개지 않기 위한 의도적 처리.
+    if (hasContent()) startNextPage();
+    current.wide.push(block);
+    startNextPage();
   };
 
-const place = (block: Block, allowPull: boolean): void => {
+  const placeColumn = (block: Block): void => {
+    if (current.wide.length > 0) startNextPage();
+
     const h = heights[block.id] ?? 0;
     const isContinuation = lastGroupId === block.groupId;
-    // 같은 본문(passage)이 쪼개진 조각끼리는 간격 0 (하나의 박스처럼 보이게)
-    const isPassageSeg =
-      block.kind === 'q-passage' || block.kind === 'group-passage';
     const gap =
-      used === 0
-        ? 0
-        : isPassageSeg && isContinuation
-          ? 0
-          : isContinuation
-            ? BLOCK_GAP_PX
-            : GROUP_GAP_PX;
+      used === 0 ? 0 : isContinuation ? BLOCK_GAP_PX : GROUP_GAP_PX;
     const proposed = used + gap + h;
 
     if (used === 0 || proposed <= available()) {
@@ -3345,37 +3205,24 @@ const place = (block: Block, allowPull: boolean): void => {
       return;
     }
 
-    // 안 들어감 - 다음 컬럼으로 이동
     if (colIdx === 0) {
       colIdx = 1;
       used = 0;
       lastGroupId = null;
-      place(block, allowPull);
-      return;
-    }
-
-    // 우측 컬럼도 꽉 참 - 다음 페이지로 이동
-    if (allowPull && isContinuation && block.pullPriority >= 10) {
-      // 같은 그룹의 묶음 블록들을 같이 다음 페이지로
-      const pulled = pullSameGroupHighPriority(block.groupId);
-
-      startNextPage();
-
-      for (const pb of [...pulled, block]) {
-        place(pb, false);
-      }
+      placeColumn(block);
       return;
     }
 
     startNextPage();
-    place(block, allowPull);
+    placeColumn(block);
   };
 
   for (const block of blocks) {
-    place(block, true);
+    if (block.wide) placeWide(block);
+    else placeColumn(block);
   }
 
-  pages.push(current);
+  if (hasContent()) pages.push(current);
   return pages;
 }
 
@@ -3644,7 +3491,12 @@ function ExamPaper({
         </div>
         <div className="measure-col" style={{ width: COL_W_PX }}>
           {blocks.map((b) => (
-            <div data-mid={b.id} key={b.id} className="measure-item">
+            <div
+              data-mid={b.id}
+              key={b.id}
+              className="measure-item"
+              style={{ width: b.wide ? CONTENT_W_PX : COL_W_PX }}
+            >
               {b.render()}
             </div>
           ))}
@@ -3738,11 +3590,17 @@ function PaperPage({
             <PaperHeaderMini header={header} />
           )}
 
-          <div className="paper-columns">
-            <Column blocks={page.cols[0]} />
-            <div className="paper-divider" />
-            <Column blocks={page.cols[1]} />
-          </div>
+          {page.wide.length > 0 ? (
+            <div className="paper-wide">
+              <Column blocks={page.wide} />
+            </div>
+          ) : (
+            <div className="paper-columns">
+              <Column blocks={page.cols[0]} />
+              <div className="paper-divider" />
+              <Column blocks={page.cols[1]} />
+            </div>
+          )}
 
           <footer className="paper-footer">
             <span className="paper-footer-academy">{header.academyName}</span>
@@ -3881,6 +3739,58 @@ function PaperHeaderMini({ header }: { header: ExamHeader }) {
 }
 
 // ─────────── 블록 컴포넌트 ───────────
+function CommonGroupBlock({
+  group,
+  startNum,
+  endNum,
+}: {
+  group: CommonGroup;
+  startNum: number;
+  endNum: number;
+}) {
+  return (
+    <>
+      <CommonGroupHeader group={group} startNum={startNum} endNum={endNum} />
+      {group.hasCommonPassage && !isPlainTextEmpty(group.commonPassage) && (
+        <PassageView html={group.commonPassage} />
+      )}
+    </>
+  );
+}
+
+function QuestionBlock({
+  q,
+  number,
+  inGroup,
+}: {
+  q: Question;
+  number: number;
+  inGroup: boolean;
+}) {
+  return (
+    <>
+      <QuestionStem q={q} number={number} inGroup={inGroup} />
+
+      {q.hasPassage && !isPlainTextEmpty(q.passage) && (
+        <PassageView html={q.passage} />
+      )}
+
+      {q.type === 'written' && q.conditions.length > 0 && (
+        <ConditionsView conditions={q.conditions} />
+      )}
+
+      {q.type === 'written' && <AnswerArea lines={q.answerLines} />}
+
+      {q.type === 'multiple-choice' &&
+        q.choices.map((c, i) => (
+          <ChoiceItem key={i} choice={c} index={i} />
+        ))}
+
+      {q.type === 'ox' && <OxBlock sentences={q.oxSentences} />}
+    </>
+  );
+}
+
 function CommonGroupHeader({
   group,
   startNum,
@@ -3934,26 +3844,13 @@ function QuestionStem({
   );
 }
 
-function PassageView({
-  html,
-  isFirst = true,
-  isLast = true,
-}: {
-  html: string;
-  isFirst?: boolean;
-  isLast?: boolean;
-}) {
-  const cls = [
-    'q-passage',
-    isFirst ? 'q-passage-first' : 'q-passage-mid',
-    isLast ? 'q-passage-last' : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
+function PassageView({ html }: { html: string }) {
   return (
-    <div className={cls}>
-      {!isFirst && <span className="q-passage-continue">지문 계속</span>}
-      <span dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(html) }} />
+    <div className="q-passage">
+      <span
+        className="q-passage-content"
+        dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(html) }}
+      />
     </div>
   );
 }
