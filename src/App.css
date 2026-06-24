@@ -3499,3 +3499,82 @@ textarea {
   font-size: 12.5px;
   margin-left: 4px;
 }
+
+
+/* ───────────────────────────────────────────────────────
+   PATCH: 긴 지문 박스 / 제시어 조건
+─────────────────────────────────────────────────────── */
+
+/* 분할된 본문 조각도 테두리가 끊어져 보이지 않게 전체 박스로 처리 */
+.q-passage,
+.q-passage-first,
+.q-passage-mid,
+.q-passage-last,
+.q-passage-first.q-passage-last {
+  border: 0.5px solid var(--ink-3);
+  border-radius: 1mm;
+  padding: 2.5mm 3mm;
+  margin-bottom: 1.5mm;
+}
+
+/* 조건 입력 UI */
+.cp-condition-inputs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cp-condition-word-row {
+  align-items: flex-start;
+  padding: 8px;
+  background: rgba(245, 185, 66, 0.08);
+  border: 1px solid rgba(245, 185, 66, 0.22);
+  border-radius: var(--r-md);
+}
+
+.cp-word-input {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--accent-hi);
+  border-color: rgba(245, 185, 66, 0.45);
+  background: rgba(245, 185, 66, 0.09);
+}
+
+.cp-condition-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cp-condition-add-word {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* 출력지 조건: 제시어를 별도 칩으로 강조 */
+.q-conditions-list li.q-condition-word-item {
+  grid-template-columns: 4mm 1fr;
+}
+
+.q-condition-text {
+  min-width: 0;
+}
+
+.q-condition-word {
+  display: inline-block;
+  margin-left: 1.6mm;
+  padding: 0.4mm 2mm 0.55mm;
+  border: 0.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 8.8pt;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  vertical-align: baseline;
+}
