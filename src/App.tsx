@@ -341,17 +341,96 @@ function isPlainTextEmpty(html: string): boolean {
   return stripped.length === 0;
 }
 
-// 긴 지문을 문장(또는 줄바꿈) 단위로 쪼개서 페이지를 넘어 흐를 수 있게 만든다.
-// 각 조각은 독립 블록이 되어 컬럼/페이지 경계에서 자연스럽게 분리된다.
+// 긴 지문을 페이지 밖으로 넘기지 않기 위한 안전 분할 기준.
+// 평소에는 사용자가 입력한 문단을 유지하고, 한 문단이 지나치게 길 때만
+// 문장 경계 → 단어 경계 순으로 나눈다.
+const MAX_PASSAGE_SEGMENT_CHARS = 560;
+
+function decodeBasicEntities(text: string): string {
+  return text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
+function htmlToParagraphText(html: string): string[] {
+  const normalized = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/\s*(p|div|li|h[1-6]|tr|section|article)\s*>/gi, '\n\n')
+    .replace(/<\s*(p|div|li|h[1-6]|tr|section|article)(\s[^>]*)?>/gi, '')
+    .replace(/<[^>]*>/g, '');
+
+  return decodeBasicEntities(normalized)
+    .replace(/\r/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/[ \t]*\n[ \t]*/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .split(/\n{2,}|\n/g)
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
+function splitVeryLongParagraph(text: string): string[] {
+  if (text.length <= MAX_PASSAGE_SEGMENT_CHARS) return [text];
+
+  const sentences = text
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[.!?])\s+(?=[A-Z0-9“"'])/g)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const chunks: string[] = [];
+  let cur = '';
+
+  const pushCur = () => {
+    if (cur.trim()) chunks.push(cur.trim());
+    cur = '';
+  };
+
+  const pushWordChunks = (sentence: string) => {
+    const words = sentence.split(/\s+/);
+    for (const word of words) {
+      const next = cur ? `${cur} ${word}` : word;
+      if (next.length > MAX_PASSAGE_SEGMENT_CHARS && cur) pushCur();
+      cur = cur ? `${cur} ${word}` : word;
+    }
+  };
+
+  for (const sentence of sentences.length ? sentences : [text]) {
+    if (sentence.length > MAX_PASSAGE_SEGMENT_CHARS) {
+      pushWordChunks(sentence);
+      continue;
+    }
+
+    const next = cur ? `${cur} ${sentence}` : sentence;
+    if (next.length > MAX_PASSAGE_SEGMENT_CHARS && cur) pushCur();
+    cur = cur ? `${cur} ${sentence}` : sentence;
+  }
+
+  pushCur();
+  return chunks.length ? chunks : [text];
+}
+
+// 긴 지문을 페이지/컬럼 단위로 흘려보내기 위한 세그먼트 생성.
+// - 짧은 지문: 하나의 박스 유지
+// - 긴 지문: 입력 문단 기준 유지
+// - 너무 긴 단일 문단: 문장/단어 경계에서만 안전 분할
 function splitPassageIntoSegments(html: string): string[] {
   if (!html || isPlainTextEmpty(html)) return [];
 
-  // 2026-06 패치:
-  // 기존 로직은 <br>/<p>를 기준으로 지문을 여러 블록으로 쪼갔기 때문에
-  // 사용자가 의도하지 않은 단락 분할과 박스 테두리 끊김이 발생했다.
-  // 지문은 기본적으로 하나의 박스로 유지한다.
-  // 아주 긴 지문은 페이지 계산 로직이 블록 단위로 다음 칸/페이지에 배치한다.
-  return [html];
+  const paragraphs = htmlToParagraphText(html);
+  const plain = paragraphs.join('\n\n').trim();
+
+  // 짧은 지문은 원본 HTML을 그대로 반환해서 사용자가 넣은 굵게/밑줄을 보존한다.
+  if (plain.length > 0 && plain.length <= MAX_PASSAGE_SEGMENT_CHARS) {
+    return [html];
+  }
+
+  const source = paragraphs.length > 0 ? paragraphs : [sanitizeRichHtml(html)];
+  return source.flatMap(splitVeryLongParagraph);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3024,40 +3103,53 @@ function buildBlocks(
       const endNum = end + 1;
 
       if (group) {
-        // 공통 발문 블록 (본문과 분리)
+        const segs =
+          group.hasCommonPassage && !isPlainTextEmpty(group.commonPassage)
+            ? splitPassageIntoSegments(group.commonPassage)
+            : [];
+
+        // 공통 발문과 지문 첫 조각은 한 블록으로 묶는다.
+        // 그래야 [1~7] 발문만 왼쪽에 남고 지문이 오른쪽으로 떨어지는 현상이 사라진다.
         blocks.push({
           id: `${groupId}-header`,
           groupId: `gr-${groupId}`,
           kind: 'group-header',
-          pullPriority: 10, // 본문 첫 조각과 묶임
+          pullPriority: 10,
           render: () => (
-            <CommonGroupHeader
-              group={group}
-              startNum={startNum}
-              endNum={endNum}
-            />
+            <>
+              <CommonGroupHeader
+                group={group}
+                startNum={startNum}
+                endNum={endNum}
+              />
+              {segs[0] && (
+                <PassageView
+                  html={segs[0]}
+                  isFirst
+                  isLast={segs.length === 1}
+                />
+              )}
+            </>
           ),
         });
 
-        // 공통 본문을 문장 단위로 쪼개서 별도 블록들로 추가
-        if (group.hasCommonPassage && !isPlainTextEmpty(group.commonPassage)) {
-          const segs = splitPassageIntoSegments(group.commonPassage);
-          segs.forEach((seg, si) => {
-            blocks.push({
-              id: `${groupId}-cpassage-${si}`,
-              groupId: `gr-${groupId}`,
-              kind: 'group-passage',
-              pullPriority: si === 0 ? 10 : 0,
-              render: () => (
-                <PassageView
-                  html={seg}
-                  isFirst={si === 0}
-                  isLast={si === segs.length - 1}
-                />
-              ),
-            });
+        // 남은 지문 조각은 컬럼/페이지 경계에서 이어지는 블록으로 배치한다.
+        segs.slice(1).forEach((seg, idx) => {
+          const si = idx + 1;
+          blocks.push({
+            id: `${groupId}-cpassage-${si}`,
+            groupId: `gr-${groupId}`,
+            kind: 'group-passage',
+            pullPriority: 0,
+            render: () => (
+              <PassageView
+                html={seg}
+                isFirst={false}
+                isLast={si === segs.length - 1}
+              />
+            ),
           });
-        }
+        });
       }
 
       // 그룹 내 각 문제 블록 추가
@@ -3082,33 +3174,48 @@ function pushQuestionBlocks(
   num: number,
   inGroup: boolean
 ) {
-  // 발문 (+ 개별 본문은 별개 블록이지만 stem과 묶음 우선순위 부여)
+  const passageSegs =
+    q.hasPassage && !isPlainTextEmpty(q.passage)
+      ? splitPassageIntoSegments(q.passage)
+      : [];
+
+  // 개별 문제도 발문과 지문 첫 조각을 한 블록으로 묶는다.
+  // 긴 지문이 다음 컬럼으로 넘어가더라도 문제 번호만 혼자 남지 않게 한다.
   blocks.push({
     id: `${q.id}-stem`,
     groupId: q.id,
     kind: 'q-stem',
     pullPriority: 10,
-    render: () => <QuestionStem q={q} number={num} inGroup={inGroup} />,
+    render: () => (
+      <>
+        <QuestionStem q={q} number={num} inGroup={inGroup} />
+        {passageSegs[0] && (
+          <PassageView
+            html={passageSegs[0]}
+            isFirst
+            isLast={passageSegs.length === 1}
+          />
+        )}
+      </>
+    ),
   });
 
-if (q.hasPassage && !isPlainTextEmpty(q.passage)) {
-    const segs = splitPassageIntoSegments(q.passage);
-    segs.forEach((seg, si) => {
-      blocks.push({
-        id: `${q.id}-passage-${si}`,
-        groupId: q.id,
-        kind: 'q-passage',
-        pullPriority: si === 0 ? 10 : 0, // 첫 조각만 발문과 묶음, 나머지는 자유롭게 흐름
-        render: () => (
-          <PassageView
-            html={seg}
-            isFirst={si === 0}
-            isLast={si === segs.length - 1}
-          />
-        ),
-      });
+  passageSegs.slice(1).forEach((seg, idx) => {
+    const si = idx + 1;
+    blocks.push({
+      id: `${q.id}-passage-${si}`,
+      groupId: q.id,
+      kind: 'q-passage',
+      pullPriority: 0,
+      render: () => (
+        <PassageView
+          html={seg}
+          isFirst={false}
+          isLast={si === passageSegs.length - 1}
+        />
+      ),
     });
-  }
+  });
   if (q.type === 'written') {
     if (q.conditions.length > 0) {
       blocks.push({
@@ -3844,10 +3951,10 @@ function PassageView({
     .filter(Boolean)
     .join(' ');
   return (
-    <div
-      className={cls}
-      dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(html) }}
-    />
+    <div className={cls}>
+      {!isFirst && <span className="q-passage-continue">지문 계속</span>}
+      <span dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(html) }} />
+    </div>
   );
 }
 
