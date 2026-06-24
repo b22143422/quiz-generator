@@ -3755,17 +3755,19 @@ function ConditionsView({ conditions }: { conditions: Condition[] }) {
     <div className="q-conditions">
       <span className="q-conditions-label">조건</span>
       <ol className="q-conditions-list">
-        {conditions.map((c) => (
-          <li
-            key={c.id}
-            className={c.words !== undefined ? 'q-condition-word-item' : ''}
-          >
-            <span className="q-condition-text">{c.text}</span>
-            {c.words !== undefined && c.words.trim() !== '' && (
-              <span className="q-condition-word">{c.words}</span>
-            )}
-          </li>
-        ))}
+        {conditions.map((c) => {
+          const hasWords = c.words !== undefined && c.words.trim() !== '';
+          return (
+            <li key={c.id}>
+              <div className="q-condition-body">
+                <span className="q-condition-text">{c.text}</span>
+                {hasWords && (
+                  <div className="q-condition-word">[ {c.words!.trim()} ]</div>
+                )}
+              </div>
+            </li>
+          );
+        })}
       </ol>
     </div>
   );
