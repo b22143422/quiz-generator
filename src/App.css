@@ -3555,9 +3555,12 @@ textarea {
   background: var(--accent-soft);
 }
 
-/* 출력지 조건: 제시어를 별도 칩으로 강조 */
-.q-conditions-list li.q-condition-word-item {
-  grid-template-columns: 4mm 1fr;
+/* 출력지 조건: 제시어를 조건문구 아래 줄에 [ ] 가벼운 강조로 표시 */
+.q-condition-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6mm;
 }
 
 .q-condition-text {
@@ -3565,18 +3568,14 @@ textarea {
 }
 
 .q-condition-word {
-  display: inline-block;
-  margin-left: 1.6mm;
-  padding: 0.4mm 2mm 0.55mm;
-  border: 0.5px solid var(--ink);
-  border-radius: 999px;
-  background: var(--ink);
-  color: var(--paper);
   font-family: var(--font-mono);
-  font-size: 8.8pt;
-  font-weight: 800;
+  font-weight: 700;
+  font-size: 8.6pt;
+  color: var(--ink);
+  line-height: 1.5;
+  white-space: normal;
+  word-break: keep-all;
   letter-spacing: 0.01em;
-  vertical-align: baseline;
 }
 
 /* ───────────────────────────────────────────────────────
