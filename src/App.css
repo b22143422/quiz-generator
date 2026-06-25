@@ -3568,14 +3568,14 @@ textarea {
 }
 
 .q-condition-word {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 8.6pt;
+  font-family: var(--font-paper);
+  font-weight: 800;
+  font-size: 9pt;
   color: var(--ink);
-  line-height: 1.5;
+  line-height: 1.55;
   white-space: normal;
   word-break: keep-all;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
 }
 
 /* ───────────────────────────────────────────────────────
