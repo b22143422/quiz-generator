@@ -44,6 +44,7 @@ interface Question {
   conditions: Condition[];    // 영작 조건 (서술형 전용)
   choices: string[];          // 객관식 선택지 [5]
   answerLines: number;        // 서술형 답란 줄 수
+  answerGuide: string;        // 답안 가이드 뼈대 (빈칸은 ⟦GBLANK:s|m|l⟧ 토큰). 비어있으면 빈 줄 답란 사용
   answer: string;             // 정답 (객관식: ① 등 / 서술형: text)
   oxSentences: OxSentence[];  // OX 문장들
   groupId?: string;           // 공통 발문 그룹 ID (선택)
@@ -151,6 +152,7 @@ function normalizeQuestion(q: any): Question {
         ? q.choices
         : ['', '', '', '', ''],
     answerLines: typeof q?.answerLines === 'number' ? q.answerLines : 3,
+    answerGuide: typeof q?.answerGuide === 'string' ? q.answerGuide : '',
     answer: q?.answer ?? '',
     oxSentences: Array.isArray(q?.oxSentences)
       ? q.oxSentences.map((s: any) => ({
@@ -338,6 +340,44 @@ function isPlainTextEmpty(html: string): boolean {
     .replace(/&nbsp;/g, ' ')
     .trim();
   return stripped.length === 0;
+}
+
+// ─── 답안 가이드 (서술형 답란 스캐폴딩) ───
+// 가이드 뼈대 문장에 학생이 채울 빈칸을 ⟦GBLANK:s|m|l⟧ 토큰으로 심는다.
+// s=짧음, m=보통, l=긺 (밑줄 길이).
+type GuideBlankLen = 's' | 'm' | 'l';
+
+function makeGuideBlankToken(len: GuideBlankLen): string {
+  return `⟦GBLANK:${len}⟧`;
+}
+
+interface GuideToken {
+  type: 'text' | 'blank';
+  text: string;
+  len?: GuideBlankLen;
+}
+
+function parseGuide(guide: string): GuideToken[] {
+  const result: GuideToken[] = [];
+  const regex = /⟦GBLANK:([sml])⟧/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(guide)) !== null) {
+    if (m.index > last) {
+      result.push({ type: 'text', text: guide.slice(last, m.index) });
+    }
+    result.push({ type: 'blank', text: '', len: m[1] as GuideBlankLen });
+    last = m.index + m[0].length;
+  }
+  if (last < guide.length) {
+    result.push({ type: 'text', text: guide.slice(last) });
+  }
+  return result;
+}
+
+// 가이드에 실제로 빈칸 토큰이 하나라도 있는지
+function guideHasBlanks(guide: string): boolean {
+  return /⟦GBLANK:[sml]⟧/.test(guide);
 }
 
 // 지문은 더 이상 임의 분할하지 않습니다.
@@ -777,6 +817,7 @@ interface ComposerState {
   conditions: Condition[];
   choices: string[];
   answerLines: number;
+  answerGuide: string;
   answer: string;
   oxSentences: OxSentence[];
 }
@@ -789,9 +830,136 @@ const blankComposer: ComposerState = {
   conditions: [],
   choices: ['', '', '', '', ''],
   answerLines: 3,
+  answerGuide: '',
   answer: '',
   oxSentences: [],
 };
+
+// ═══════════════════════════════════════════════════════
+//  ANSWER GUIDE EDITOR (서술형 답란 스캐폴딩 입력)
+//  - 뼈대 문장을 입력하고, 학생이 채울 부분을 드래그 → 짧음/보통/긺 빈칸으로
+// ═══════════════════════════════════════════════════════
+function AnswerGuideEditor({
+  guide,
+  onChange,
+}: {
+  guide: string;
+  onChange: (g: string) => void;
+}) {
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  const [hasSelection, setHasSelection] = useState(false);
+
+  const enabled = guide.length > 0 || guideHasBlanks(guide);
+
+  const handleSelection = () => {
+    const ta = taRef.current;
+    if (!ta) return;
+    setHasSelection(ta.selectionStart !== ta.selectionEnd);
+  };
+
+  // 선택한 부분을 지정 길이의 빈칸 토큰으로 치환
+  const makeBlank = (len: GuideBlankLen) => {
+    const ta = taRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    if (start === end) return;
+    const before = guide.slice(0, start);
+    const sel = guide.slice(start, end);
+    const after = guide.slice(end);
+    // 선택 영역 양옆 공백은 보존
+    const lead = sel.match(/^\s*/)?.[0] ?? '';
+    const trail = sel.match(/\s*$/)?.[0] ?? '';
+    onChange(before + lead + makeGuideBlankToken(len) + trail + after);
+    setHasSelection(false);
+  };
+
+  const clearGuide = () => {
+    if (guide && !confirm('답안 가이드를 모두 지울까요?')) return;
+    onChange('');
+  };
+
+  const tokens = parseGuide(guide);
+
+  return (
+    <div className="cp-guide-block">
+      <div className="cp-guide-head">
+        <span className="cp-guide-title">답안 가이드</span>
+        <span className="cp-guide-sub">
+          일부를 미리 주고 빈칸만 작성하게
+        </span>
+        {enabled && (
+          <button className="cp-guide-clear" onClick={clearGuide}>
+            지우기
+          </button>
+        )}
+      </div>
+
+      <div className="cp-guide-toolbar">
+        <span className="cp-guide-toolbar-label">빈칸 만들기:</span>
+        <button
+          className="cp-guide-blank-btn len-s"
+          onClick={() => makeBlank('s')}
+          disabled={!hasSelection}
+          title="선택한 부분을 짧은 빈칸으로"
+        >
+          짧음
+        </button>
+        <button
+          className="cp-guide-blank-btn len-m"
+          onClick={() => makeBlank('m')}
+          disabled={!hasSelection}
+          title="선택한 부분을 보통 빈칸으로"
+        >
+          보통
+        </button>
+        <button
+          className="cp-guide-blank-btn len-l"
+          onClick={() => makeBlank('l')}
+          disabled={!hasSelection}
+          title="선택한 부분을 긴 빈칸으로"
+        >
+          긺
+        </button>
+        <span className="cp-guide-hint">
+          {hasSelection ? '선택됨 ✓' : '문장에서 채울 부분 드래그'}
+        </span>
+      </div>
+
+      <textarea
+        ref={taRef}
+        className="cp-textarea cp-guide-input"
+        value={guide}
+        placeholder={
+          '학생에게 보여줄 뼈대 문장을 입력하세요.\n예: The smell and sound are their tools to protect themselves.\n→ 채울 단어를 드래그한 뒤 [짧음/보통/긺] 버튼을 누르면 그 자리가 빈칸이 됩니다.'
+        }
+        onChange={(e) => onChange(e.target.value)}
+        onSelect={handleSelection}
+        onMouseUp={handleSelection}
+        onKeyUp={handleSelection}
+        rows={3}
+      />
+
+      {guide && (
+        <div className="cp-guide-preview">
+          <span className="cp-guide-preview-label">미리보기</span>
+          <div className="cp-guide-preview-text">
+            {tokens.map((t, i) =>
+              t.type === 'text' ? (
+                <span key={i}>{t.text}</span>
+              ) : (
+                <span
+                  key={i}
+                  className={`cp-guide-preview-blank len-${t.len ?? 'm'}`}
+                />
+              )
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ControlPanel({
   paperMode,
@@ -849,6 +1017,7 @@ function ControlPanel({
           conditions: q.conditions.map((c) => ({ ...c })),
           choices: [...q.choices],
           answerLines: q.answerLines,
+          answerGuide: q.answerGuide,
           answer: q.answer,
           oxSentences: q.oxSentences.map((s) => ({ ...s })),
         });
@@ -1419,7 +1588,18 @@ function ControlPanel({
                   +
                 </button>
               </div>
+              {guideHasBlanks(composer.answerGuide) && (
+                <small className="cp-hint" style={{ marginTop: 8 }}>
+                  ※ 답안 가이드가 설정되어 있어 빈 줄 대신 가이드 문장이
+                  출력됩니다.
+                </small>
+              )}
             </div>
+
+            <AnswerGuideEditor
+              guide={composer.answerGuide}
+              onChange={(g) => setComposer({ ...composer, answerGuide: g })}
+            />
           </>
         )}
 
@@ -3678,7 +3858,9 @@ function QuestionBlock({
         <ConditionsView conditions={q.conditions} />
       )}
 
-      {q.type === 'written' && <AnswerArea lines={q.answerLines} />}
+      {q.type === 'written' && (
+        <AnswerArea lines={q.answerLines} guide={q.answerGuide} />
+      )}
 
       {q.type === 'multiple-choice' &&
         q.choices.map((c, i) => (
@@ -3791,7 +3973,35 @@ function ChoiceItem({ choice, index }: { choice: string; index: number }) {
   );
 }
 
-function AnswerArea({ lines }: { lines: number }) {
+function AnswerArea({ lines, guide }: { lines: number; guide: string }) {
+  const useGuide = guideHasBlanks(guide);
+
+  if (useGuide) {
+    const tokens = parseGuide(guide);
+    return (
+      <div className="q-answer">
+        <div className="q-answer-label">답</div>
+        <div className="q-answer-guide">
+          {tokens.map((t, i) => {
+            if (t.type === 'text') {
+              return (
+                <span key={i} className="q-answer-guide-text">
+                  {t.text}
+                </span>
+              );
+            }
+            return (
+              <span
+                key={i}
+                className={`q-answer-guide-blank len-${t.len ?? 'm'}`}
+              />
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="q-answer">
       <div className="q-answer-label">답</div>
