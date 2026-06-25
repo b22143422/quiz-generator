@@ -113,7 +113,7 @@ const BLOCK_GAP_PX = 1.5 * MM_TO_PX;
 const GROUP_GAP_PX = 6 * MM_TO_PX;
 
 const FOOTER_PX = 8 * MM_TO_PX;
-const SAFETY_MARGIN_PX = 4 * MM_TO_PX;
+const SAFETY_MARGIN_PX = 10 * MM_TO_PX;
 
 // ═══════════════════════════════════════════════════════
 //  LIBRARY (localStorage)
@@ -3067,6 +3067,13 @@ function paginate(
   const availCol = (): number =>
     COL_FULL_H_PX - headerForPage(pageIdx) - FOOTER_PX - SAFETY_MARGIN_PX;
 
+  // 측정 레이어(화면 밖)와 실제 렌더 사이의 미세한 오차(웹폰트 로드 타이밍,
+  // 줄간격 반올림 등)를 흡수하기 위한 블록별 안전 버퍼.
+  // 이게 없으면 답란처럼 여러 줄짜리 블록이 경계에서 한 줄씩 삐져나가 잘린다.
+  const MEASURE_BUFFER_PX = 2 * MM_TO_PX;
+  const blockH = (block: Block): number =>
+    (heights[block.id] ?? 0) + MEASURE_BUFFER_PX;
+
   const hasContent = (): boolean =>
     current.wide.length > 0 ||
     current.cols[0].length > 0 ||
@@ -3082,7 +3089,7 @@ function paginate(
   };
 
   const placeColumn = (block: Block): void => {
-    const h = heights[block.id] ?? 0;
+    const h = blockH(block);
     const isContinuation = lastGroupId === block.groupId;
     const gap = used === 0 ? 0 : isContinuation ? BLOCK_GAP_PX : GROUP_GAP_PX;
     const proposed = used + gap + h;
@@ -3110,7 +3117,7 @@ function paginate(
   };
 
   for (const block of blocks) {
-    const h = heights[block.id] ?? 0;
+    const h = blockH(block);
 
     // 한 컬럼 높이보다도 큰 블록만 전체폭 단독 배치.
     // (긴 공통 지문/긴 개별 지문) — 본문을 쪼개지 않기 위한 유일한 예외.
