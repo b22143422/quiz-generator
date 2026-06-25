@@ -2385,6 +2385,39 @@ textarea {
   border-bottom: none;
 }
 
+/* ─── 답안 가이드 (뼈대 문장 + 밑줄 빈칸) ─── */
+.q-answer-guide {
+  padding: 2mm 3mm 2.5mm;
+  font-size: 9.5pt;
+  line-height: 2.1;
+  color: var(--ink);
+  word-break: keep-all;
+}
+
+.q-answer-guide-text {
+  white-space: pre-wrap;
+}
+
+.q-answer-guide-blank {
+  display: inline-block;
+  border-bottom: 0.6px solid var(--ink);
+  height: 1px;
+  vertical-align: 2px;
+  margin: 0 0.8mm;
+}
+
+.q-answer-guide-blank.len-s {
+  width: 14mm;
+}
+
+.q-answer-guide-blank.len-m {
+  width: 24mm;
+}
+
+.q-answer-guide-blank.len-l {
+  width: 40mm;
+}
+
 /* ─── OX 블록 ─── */
 .q-ox-list {
   list-style: none;
@@ -2924,6 +2957,147 @@ textarea {
   font-size: 13px;
   line-height: 1.7;
   background: var(--surface-2);
+}
+
+/* ─── 답안 가이드 입력 UI ─── */
+.cp-guide-block {
+  margin-top: 14px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.cp-guide-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cp-guide-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.005em;
+}
+
+.cp-guide-sub {
+  font-size: 10.5px;
+  color: var(--text-4);
+  letter-spacing: 0;
+}
+
+.cp-guide-clear {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-3);
+  padding: 4px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  transition: all 0.15s ease;
+}
+
+.cp-guide-clear:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: rgba(229, 115, 115, 0.1);
+}
+
+.cp-guide-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.cp-guide-toolbar-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  letter-spacing: 0.02em;
+}
+
+.cp-guide-blank-btn {
+  padding: 6px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-2);
+  transition: all 0.15s ease;
+}
+
+.cp-guide-blank-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.cp-guide-blank-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cp-guide-hint {
+  font-size: 10.5px;
+  color: var(--text-4);
+  margin-left: 2px;
+}
+
+.cp-guide-input {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  background: var(--surface-2);
+  min-height: 70px;
+}
+
+.cp-guide-preview {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(245, 185, 66, 0.25);
+  border-radius: 7px;
+}
+
+.cp-guide-preview-label {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.cp-guide-preview-text {
+  font-size: 13px;
+  line-height: 2;
+  color: var(--text);
+  word-break: keep-all;
+}
+
+.cp-guide-preview-blank {
+  display: inline-block;
+  border-bottom: 1.5px solid var(--accent);
+  height: 1px;
+  vertical-align: 3px;
+  margin: 0 3px;
+}
+
+.cp-guide-preview-blank.len-s {
+  width: 28px;
+}
+
+.cp-guide-preview-blank.len-m {
+  width: 48px;
+}
+
+.cp-guide-preview-blank.len-l {
+  width: 80px;
 }
 
 .cp-sentence-preview {
